@@ -1,0 +1,24 @@
+bash -n scripts/setup_vm.sh
+python3 scripts/check_env.py
+FAIL: systemd-detect-virt: exit 1: none
+FAIL: clang-18 --version: [Errno 2] No such file or directory: 'clang-18'
+FAIL: bpftool version: [Errno 2] No such file or directory: 'bpftool'
+FAIL: dpkg-query -W -f=${binary:Package}=${Version}
+: [Errno 2] No such file or directory: 'dpkg-query'
+FAIL: clang-18 -target bpf -O2 -g -x c -c /dev/null -o /tmp/tripwire-check-izhhqg_b/probe.o: [Errno 2] No such file or directory: 'clang-18'
+FAIL: Ubuntu 24.04 required; got ['arch', None]
+FAIL: no VM/container detected; disposable guest required
+FAIL: config/environment.lock.json missing; run setup inside the disposable guest
+cgroup_fs: cgroup2fs
+libbpf: 1.7.0
+python: Python 3.14.8
+make: GNU Make 4.4.1
+Built for x86_64-pc-linux-gnu
+Copyright (C) 1988-2023 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+os: ['arch', None]; architecture: x86_64
+kernel: 7.2.11-arch1-1; BTF readable: True
+environment: FAIL
+make: *** [Makefile:4: check] Error 1
