@@ -1,0 +1,13 @@
+{
+  "ubuntu_version": "24.04",
+  "architecture": "amd64",
+  "snapshot": "20261001T000000Z",
+  "minimum_kernel": [5, 15],
+  "clang": "clang-18",
+  "packages": ["build-essential", "clang-18", "llvm-18", "libbpf-dev", "libelf-dev", "zlib1g-dev", "pkg-config", "python3", "make", "linux-image-generic", "linux-tools-generic", "linux-tools-common"],
+  "userspace": "python-with-c-libbpf-loader",
+  "agent": "minimal-react",
+  "runtime": "ollama",
+  "model": null,
+  "paid_apis_enabled": false
+}
