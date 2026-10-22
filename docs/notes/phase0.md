@@ -27,12 +27,12 @@ detection or utility claim is made. The workspace is an unconfirmed Arch host,
 so package installation is excluded. Failure of target-environment acceptance
 must remain visible; a unit-test pass cannot substitute for a guest check.
 
-## Acceptance
+## Initial host acceptance attempt (superseded by guest acceptance below)
 
 See `phase0-acceptance.txt` for the actual development-host check output.
-Guest setup, repeated setup idempotency, exact environment lock and successful
-`make check` on Ubuntu are pending. Stop here until a disposable guest is
-available; do not proceed to Phase 1 on the strength of scaffold tests alone.
+At this initial attempt, guest setup, repeated setup idempotency, exact
+environment lock and successful `make check` on Ubuntu were pending. This
+was not sufficient to proceed to Phase 1.
 
 ## What to learn
 
@@ -51,3 +51,33 @@ outside the safety boundary. Review changed snapshot selection to read archive
 versions with `apt-cache madison`: policy candidates can otherwise prefer a
 newer already-installed version. Guest installation and archive availability
 remain unverified.
+
+
+## Accepted guest run — 2026-10-22
+
+An isolated QEMU/KVM guest completed Phase 0 with exit 0. The signed Ubuntu
+release-20260926 image booted 6.8.0-142-generic initially; setup reported exactly:
+
+```text
+ERROR: running 6.8.0-142-generic; installed 6.8.0-146-generic. Reboot the VM into that kernel, then rerun setup. Containers must use a matching guest VM kernel.
+```
+
+Diagnosis: installing the pinned kernel does not replace the running kernel.
+The VM rebooted into 6.8.0-146-generic, completed setup, repeated setup
+successfully, then passed `make check` and all 10 tests as the unprivileged
+Ubuntu user. See `phase0-guest-acceptance.txt` and `phase0-vm-provenance.json`.
+The exact version lock is committed in `config/environment.lock.json`.
+
+The first image download timed out after 240 seconds (curl exit 28) at
+554696704 of 625612288 bytes. A range-resumed download completed, and signature
+and full-image SHA256 checks passed before boot. Cloud-init warned that
+`nocloud-net` is deprecated and retried absent optional vendor data; the launcher
+now uses `nocloud` and supplies empty vendor data. The provenance retains the
+arguments actually used for the successful run. The later launcher adjustment
+was unit checked; a second fresh VM run using that adjustment was not performed.
+
+Known limits: this validates one Ubuntu 24.04 amd64 guest, not Ubuntu 22.04 or
+other architectures; no actual BPF program was loaded. Runtime/model pinning
+remains pending before agent work. No attack or detector code was started.
+The accepted VM powered off; its disk and raw logs remain gitignored under
+`data/vm/`. Stop at this phase boundary and wait for user direction.

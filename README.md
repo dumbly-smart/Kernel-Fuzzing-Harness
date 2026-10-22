@@ -18,7 +18,8 @@ For an automated QEMU run using existing host tools, see
    requirements will be chosen later. Disable shared folders and clipboard.
 2. Use an official Ubuntu 24.04 installer. Verify its checksum against the signed
    Ubuntu SHA256SUMS. Record the exact ISO filename, SHA256 and hypervisor version
-   in `docs/ENVIRONMENT.md`. These remain pending until a guest is provisioned.
+   in `docs/ENVIRONMENT.md`. The accepted QEMU cloud-image route already records
+   its image identity and exact environment lock there.
 3. Transfer this repository into the guest without host secrets. From its root:
 
    ```sh
@@ -31,6 +32,8 @@ For an automated QEMU run using existing host tools, see
    It refuses an undetected guest, other OS versions, and other architectures.
    If it reports a kernel mismatch, reboot the VM and rerun the same command.
    Setup can be rerun; an existing environment lock is never overwritten.
+   The committed lock describes the accepted cloud-image guest; a different
+   manual base image may fail this comparison and needs a separately reviewed lock.
 4. Run the acceptance command as your normal guest user:
 
    ```sh
@@ -67,3 +70,12 @@ packages; experimental sinks in later phases must be local.
 
 See [environment status](docs/ENVIRONMENT.md),
 [threat model](docs/THREAT_MODEL.md), and [Phase 0 notes](docs/notes/phase0.md).
+
+
+## Phase 0 acceptance
+
+Passed in the disposable QEMU/KVM guest on 2026-10-22: setup, kernel reboot,
+repeated setup, `make check`, and 10 tests. See the
+[acceptance log](docs/notes/phase0-guest-acceptance.txt) and
+[exact environment](docs/ENVIRONMENT.md). This checks BPF compilation;
+loading programs and validating tracer behavior are Phase 1 work.

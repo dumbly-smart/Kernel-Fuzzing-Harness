@@ -17,13 +17,36 @@
   **not installed or pinned yet**; choose exact runtime version, model digest,
   quantization, seed and sampling settings before agent work. Paid APIs disabled.
 
-## Reproduction identities still required
+## Accepted guest — 2026-10-22
 
-TODO(verify): guest ISO filename and SHA256, hypervisor version, generated exact
-package/tool/kernel lock, successful guest acceptance log. Until these are
-recorded, Phase 0 environment acceptance is **incomplete**. No exact Ubuntu
-versions or successful VM results have been inferred from this development host.
-The archive date pins package availability; it does not pin a VM image.
+Phase 0 acceptance passed on a disposable QEMU/KVM guest:
+
+| Component | Observed version |
+| --- | --- |
+| Cloud image | Ubuntu 24.04 amd64, release-20260926 |
+| Kernel | 6.8.0-146-generic |
+| Clang | 18.1.3 (1ubuntu1) |
+| libbpf (pkg-config) | 1.3.0 |
+| bpftool | 7.4.0, with its own libbpf 1.4 |
+| Python | 3.12.3 |
+| Make | 4.3 |
+| QEMU on the launcher host | 11.1.2 |
+
+The cloud image replaces the manual ISO route for this accepted environment.
+Its URL, signed-manifest fingerprint, SHA256, launch arguments and tested source
+commit are in [VM provenance](notes/phase0-vm-provenance.json).
+Exact package revisions (including transitive dependencies) and tool output are
+in [the environment lock](../config/environment.lock.json).
+The difference between pkg-config's libbpf and bpftool's reported libbpf reflects
+separate build dependencies; later C loaders use the development package.
+
+Setup installed the generic kernel, requested a reboot from 6.8.0-142-generic,
+then succeeded on 6.8.0-146-generic. A repeated setup succeeded against the same
+lock. `make check` and all 10 tests passed as user `ubuntu`; see
+[the guest acceptance log](notes/phase0-guest-acceptance.txt).
+BTF was readable, cgroup v2 was present, and the clang BPF backend compiled an
+empty object. No BPF program was loaded: verifier and tracer smoke checks belong
+to Phase 1. The former host failure log remains as historical evidence.
 
 Snapshot sources are temporary and isolated from guest sources and indexes;
 signature verification stays enabled. Check-Valid-Until is disabled only for

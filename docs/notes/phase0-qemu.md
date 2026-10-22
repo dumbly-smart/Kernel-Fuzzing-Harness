@@ -52,5 +52,9 @@ before copying a successful lock into `config/` and committing it.
   The documented Ubuntu keyserver and pinned cloud-image fingerprint were used
   explicitly instead; checksum signature verification succeeded.
 
-Guest acceptance results will be recorded after the VM completes; this note
-does not claim that setup has passed.
+Guest acceptance completed successfully; see
+[the acceptance log](phase0-guest-acceptance.txt) and
+[the exact tested launch provenance](phase0-vm-provenance.json).
+The tested run used `nocloud-net`; the subsequent small datasource/vendor-data
+launcher fix passed syntax checking and the existing tests but has not had
+a second fresh-VM run.
