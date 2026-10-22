@@ -48,6 +48,7 @@ def main():
     if overlay.exists():
         raise RuntimeError('guest.qcow2 already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
+    (seed / 'vendor-data').write_text('#cloud-config\n{}\n')
     (seed / 'meta-data').write_text('instance-id: tripwire-phase0\nlocal-hostname: tripwire\n')
     # Reboot persistence lets setup select the installed generic kernel. Results
     # return through serial output, never by mounting the guest disk on the host.
@@ -107,7 +108,7 @@ systemctl poweroff
             '-drive', f'file={overlay},if=virtio,format=qcow2', '-display', 'none',
             '-serial', f'file:{VM / "serial.log"}', '-monitor', 'none',
             '-netdev', 'user,id=net0', '-device', 'virtio-net-pci,netdev=net0',
-            '-smbios', f'type=1,serial=ds=nocloud-net;s=http://10.0.2.2:{port}/']
+            '-smbios', f'type=1,serial=ds=nocloud;s=http://10.0.2.2:{port}/']
     provenance = {'image_url': 'https://cloud-images.ubuntu.com/releases/noble/release-20260926/' + IMAGE,
                   'image_sha256': image_hash, 'signing_fingerprint': FINGERPRINT,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
