@@ -1,0 +1,31 @@
+{
+  "image_url": "https://cloud-images.ubuntu.com/releases/noble/release-20260926/ubuntu-24.04-server-cloudimg-amd64.img",
+  "image_sha256": "6a81c37564db9b1ee84e141922625e1d7c5b389b99bb3c572e0243607d5bb4d2",
+  "signing_fingerprint": "D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81",
+  "qemu_version": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers\n",
+  "qemu_arguments": [
+    "qemu-system-x86_64",
+    "-enable-kvm",
+    "-cpu",
+    "host",
+    "-smp",
+    "2",
+    "-m",
+    "2048",
+    "-drive",
+    "file=/home/xtrmn8/Kernel-Fuzzing-Harness/data/vm/guest.qcow2,if=virtio,format=qcow2",
+    "-display",
+    "none",
+    "-serial",
+    "file:/home/xtrmn8/Kernel-Fuzzing-Harness/data/vm/serial.log",
+    "-monitor",
+    "none",
+    "-netdev",
+    "user,id=net0",
+    "-device",
+    "virtio-net-pci,netdev=net0",
+    "-smbios",
+    "type=1,serial=ds=nocloud-net;s=http://10.0.2.2:38413/"
+  ],
+  "source_commit": "a8f85765a3014ad14f75e48ecaba2b8b8e533661"
+}
