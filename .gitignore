@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .venv/
 build/
+data/vm/
 data/*
 !data/samples/
 !data/samples/**

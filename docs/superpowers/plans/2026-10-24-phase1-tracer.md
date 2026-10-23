@@ -32,11 +32,11 @@
 
 **Files:** config/tripwire.json, tripwire/events.py, tripwire/cli.py, tests/test_events.py, Makefile.
 
-**Interfaces:** Produces parse_event(line: str) -> dict[str, object] and iter_events(lines) -> Iterator[dict[str, object]]. JSONL common fields: type, monotonic_ns, wall_ns, pid, tgid, ppid, uid, cgroup_id, comm; type is syscall, process_fork, process_exit, or stats.
+**Interfaces:** Produces parse_event(line: str) -> dict[str, object] and iter_events(lines) -> Iterator[dict[str, object]]. JSONL common fields: type, sequence, monotonic_ns, wall_ns, pid, tgid, ppid, uid, cgroup_id, comm; type is syscall, process_fork, process_exit, or stats. Sequence records ring-consumer order because concurrent monotonic timestamps can race.
 
-- [ ] Write tests for syscall records (including negative return), fork records, drop stats, invalid JSON, missing fields and timestamp regressions.
+- [ ] Write tests for syscall records (including negative return), fork records, drop stats, invalid JSON, missing fields, sequence regressions and timestamp races.
 - [ ] Run make test and confirm the new tests fail for missing parser symbols.
-- [ ] Implement strict event validation and monotonic ordering in tripwire/events.py.
+- [ ] Implement strict event validation and delivery-sequence ordering in tripwire/events.py.
 - [ ] Implement python3 -m tripwire.cli --cgroup PATH --output PATH to validate a directory under /sys/fs/cgroup, use its inode as cgroup ID, and exec build/tripwire-loader.
 - [ ] Run make test; expected all tests pass without external Python dependencies.
 - [ ] Commit feat: add event schema and Python trace CLI; push.
