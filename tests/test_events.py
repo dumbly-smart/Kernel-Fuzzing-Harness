@@ -38,6 +38,9 @@ class ParseEventTests(unittest.TestCase):
     def test_parses_drop_counter(self):
         event = common("stats")
         event["dropped_events"] = 3
+        event["ring_buffer_bytes"] = 16777216
+        event["path_bytes"] = 256
+        event["poll_interval_ms"] = 1000
 
         self.assertEqual(parse_event(json.dumps(event))["dropped_events"], 3)
 

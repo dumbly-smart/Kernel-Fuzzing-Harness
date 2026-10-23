@@ -58,6 +58,9 @@ def parse_event(line: str) -> dict[str, Any]:
         _integer(event, "child_tgid", minimum=1)
     elif event_type == "stats":
         _integer(event, "dropped_events")
+        for key in ("ring_buffer_bytes", "path_bytes", "poll_interval_ms"):
+            if key in event:
+                _integer(event, key, minimum=1)
     return event
 
 
