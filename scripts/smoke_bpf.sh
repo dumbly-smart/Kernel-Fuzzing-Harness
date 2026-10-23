@@ -84,7 +84,7 @@ connection.close()
 PY
     rm renamed.txt
     /bin/true
-' 
+'
 
 # Let process-exit and the final periodic loss report reach the ring buffer.
 sleep 1
