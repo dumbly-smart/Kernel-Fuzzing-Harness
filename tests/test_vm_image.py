@@ -13,6 +13,18 @@ spec.loader.exec_module(vm)
 
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_base_guest_mode_preserves_baseline_and_uses_new_overlay(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'guest.qcow2').touch()
+
+            base, overlay = vm.vm_disk_paths(root, reuse_guest=True)
+
+            self.assertEqual(base, root / 'guest.qcow2')
+            self.assertEqual(overlay, root / 'guest-phase1.qcow2')
+            self.assertTrue(base.exists())
+            self.assertFalse(overlay.exists())
+
     def test_valid_image_and_tamper(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

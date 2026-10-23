@@ -42,17 +42,22 @@ def verify_image():
     return actual
 
 
+def vm_disk_paths(vm_dir, reuse_guest):
+    """Select an immutable backing disk and a fresh overlay path."""
+    if reuse_guest:
+        return vm_dir / 'guest.qcow2', vm_dir / 'guest-phase1.qcow2'
+    return vm_dir / IMAGE, vm_dir / 'guest.qcow2'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-guest", action="store_true",
                         help="create a fresh cloud-init instance from the previously accepted guest disk")
-    args = parser.parse_args()
+    options = parser.parse_args()
     image_hash = verify_image()
-    base_disk = VM / ("guest.qcow2" if args.base_guest else IMAGE)
-    overlay_name = "guest-phase1.qcow2" if args.base_guest else "guest.qcow2"
+    base_disk, overlay = vm_disk_paths(VM, reuse_guest=options.base_guest)
     seed = VM / 'seed'
     seed.mkdir(exist_ok=True)
-    overlay = VM / overlay_name
     if overlay.exists():
         raise RuntimeError('guest.qcow2 already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
@@ -118,21 +123,21 @@ systemctl poweroff
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(base_disk), str(overlay), '12G'])
-    args = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', '2048',
+    qemu_args = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', '2048',
             '-drive', f'file={overlay},if=virtio,format=qcow2', '-display', 'none',
             '-serial', f'file:{VM / "serial.log"}', '-monitor', 'none',
             '-netdev', 'user,id=net0', '-device', 'virtio-net-pci,netdev=net0',
             '-smbios', f'type=1,serial=ds=nocloud;s=http://10.0.2.2:{port}/']
     provenance = {'image_url': 'https://cloud-images.ubuntu.com/releases/noble/release-20260926/' + IMAGE,
                   'image_sha256': image_hash, 'signing_fingerprint': FINGERPRINT,
-                  'base_guest_disk': str(base_disk) if args.base_guest else None,
-                  'base_guest_provenance': str(VM / 'provenance.json') if args.base_guest else None,
+                  'base_guest_disk': str(base_disk) if options.base_guest else None,
+                  'base_guest_provenance': str(VM / 'provenance.json') if options.base_guest else None,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
-                  'qemu_arguments': args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
+                  'qemu_arguments': qemu_args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
     (VM / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
     try:
         with (VM / 'qemu.log').open('w') as log:
-            proc = subprocess.Popen(args, stdout=log, stderr=log)
+            proc = subprocess.Popen(qemu_args, stdout=log, stderr=log)
             try:
                 deadline = time.monotonic() + 1800
                 while proc.poll() is None:
