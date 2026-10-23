@@ -11,8 +11,10 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import argparse
 import threading
 import time
+import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 VM = ROOT / 'data/vm'
@@ -41,15 +43,22 @@ def verify_image():
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base-guest", action="store_true",
+                        help="create a fresh cloud-init instance from the previously accepted guest disk")
+    args = parser.parse_args()
     image_hash = verify_image()
+    base_disk = VM / ("guest.qcow2" if args.base_guest else IMAGE)
+    overlay_name = "guest-phase1.qcow2" if args.base_guest else "guest.qcow2"
     seed = VM / 'seed'
     seed.mkdir(exist_ok=True)
-    overlay = VM / 'guest.qcow2'
+    overlay = VM / overlay_name
     if overlay.exists():
         raise RuntimeError('guest.qcow2 already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
     (seed / 'vendor-data').write_text('#cloud-config\n{}\n')
-    (seed / 'meta-data').write_text('instance-id: tripwire-phase0\nlocal-hostname: tripwire\n')
+    (seed / 'meta-data').write_text(
+        f'instance-id: tripwire-{uuid.uuid4()}\nlocal-hostname: tripwire\n')
     # Reboot persistence lets setup select the installed generic kernel. Results
     # return through serial output, never by mounting the guest disk on the host.
     guest_script = r'''#!/bin/bash
@@ -70,11 +79,16 @@ if [ "$status" -eq 0 ]; then
     su ubuntu -s /bin/bash -c 'cd /opt/tripwire && make check && make test' > /root/acceptance.log 2>&1
     status=$?
 fi
+if [ "$status" -eq 0 ]; then
+    bash /opt/tripwire/scripts/smoke_bpf.sh > /root/smoke.log 2>&1
+    status=$?
+fi
 python3 - "$status" <<'RESULT'
 import base64, json, pathlib, sys
 files = {}
 for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/setup-repeat.log',
-                   'acceptance.log': '/root/acceptance.log',
+                   'acceptance.log': '/root/acceptance.log', 'smoke.log': '/root/smoke.log',
+                   'smoke-events.jsonl': '/opt/tripwire/data/phase1-smoke.events.jsonl',
                    'environment.lock.json': '/opt/tripwire/config/environment.lock.json'}.items():
     if pathlib.Path(path).exists():
         files[name] = pathlib.Path(path).read_text()
@@ -103,7 +117,7 @@ systemctl poweroff
     (seed / 'user-data').write_text('#cloud-config\n' + json.dumps(config).replace('PORT', str(port)))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(VM / IMAGE), str(overlay), '12G'])
+    command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(base_disk), str(overlay), '12G'])
     args = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', '2048',
             '-drive', f'file={overlay},if=virtio,format=qcow2', '-display', 'none',
             '-serial', f'file:{VM / "serial.log"}', '-monitor', 'none',
@@ -111,6 +125,8 @@ systemctl poweroff
             '-smbios', f'type=1,serial=ds=nocloud;s=http://10.0.2.2:{port}/']
     provenance = {'image_url': 'https://cloud-images.ubuntu.com/releases/noble/release-20260926/' + IMAGE,
                   'image_sha256': image_hash, 'signing_fingerprint': FINGERPRINT,
+                  'base_guest_disk': str(base_disk) if args.base_guest else None,
+                  'base_guest_provenance': str(VM / 'provenance.json') if args.base_guest else None,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
                   'qemu_arguments': args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
     (VM / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
@@ -143,7 +159,8 @@ systemctl poweroff
     if not results:
         raise RuntimeError('guest returned no result; see data/vm/serial.log')
     result = json.loads(base64.b64decode(results[-1], validate=True))
-    for name in ('setup.log', 'setup-repeat.log', 'acceptance.log', 'environment.lock.json'):
+    for name in ('setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
+                 'smoke-events.jsonl', 'environment.lock.json'):
         if name in result['files']:
             (VM / name).write_text(result['files'][name])
     print(f"Guest acceptance exit: {result['status']}; artifacts: {VM}", flush=True)

@@ -56,7 +56,7 @@
 
 ### Task 3: libbpf loader and JSONL stream
 
-**Files:** bpf/loader.c and bpf/Makefile; create tests/test_loader_format.py.
+**Files:** bpf/loader.c, bpf/event_json.c and bpf/event_json.h; create tests/test_event_json.py and tests/event_json_harness.c.
 
 **Interfaces:** Loader usage: build/tripwire-loader --cgroup-id ID --output FILE --ring-bytes BYTES --poll-ms MS. Loader reads ring records and cumulative per-CPU loss counters, writes UTF-8 JSONL, and emits a final stats record on SIGINT.
 

@@ -10,7 +10,9 @@ local sinks. Never mount host home directories or pass through host credentials.
 ## Reproduce the environment
 
 For an automated QEMU run using existing host tools, see
-[the disposable VM recipe](docs/notes/phase0-qemu.md).
+[the disposable VM recipe](docs/notes/phase0-qemu.md). Add --base-guest to
+reuse the pinned, accepted disk as a read-only backing image for an isolated
+test overlay after Phase 0 has passed.
 
 1. Create an Ubuntu **24.04 amd64** VM with its own disk and NAT networking.
    A practical starting allocation is 4 vCPUs, 8 GiB RAM and 30 GiB disk for
