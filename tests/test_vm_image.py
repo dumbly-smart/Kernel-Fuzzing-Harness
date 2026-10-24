@@ -76,6 +76,13 @@ class ImageVerificationTests(unittest.TestCase):
             '-drive', 'file=/tmp/tripwire-seed.iso,media=cdrom,readonly=on',
             '-smbios', 'type=1,serial=ds=nocloud'])
 
+    def test_phase3_run_directories_are_unique_and_inside_data(self):
+        first = vm.phase3_run_directory()
+        second = vm.phase3_run_directory()
+
+        self.assertNotEqual(first, second)
+        self.assertRegex(first, r'^data/phase3-corpus-[0-9a-f]{12}$')
+
     def test_persists_phase3_diagnostics_and_run_artifacts(self):
         artifacts = {
             "model-install.log": "Ollama ready\n",

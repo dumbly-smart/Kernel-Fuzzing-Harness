@@ -93,6 +93,11 @@ def nocloud_seed_qemu_args(seed_iso):
             '-smbios', 'type=1,serial=ds=nocloud']
 
 
+def phase3_run_directory():
+    """Give each corpus attempt its own path so failed runs remain inspectable."""
+    return f'data/phase3-corpus-{uuid.uuid4().hex[:12]}'
+
+
 def verify_image():
     result = command(['gpg', '--homedir', str(VM / 'gnupg'), '--batch',
                       '--status-fd', '1', '--verify', str(VM / 'SHA256SUMS.gpg'),
@@ -294,6 +299,7 @@ def main():
     seed = VM / 'seed'
     seed.mkdir(exist_ok=True)
     seed_iso = VM / 'nocloud-seed.iso'
+    phase3_run_dir = phase3_run_directory()
     if overlay.exists():
         raise RuntimeError(f'{overlay} already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
@@ -339,7 +345,7 @@ if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
-    MODEL_CONFIG=/opt/tripwire/PHASE3_MODEL_CONFIG RUN_DIR=/opt/tripwire/data/phase3-corpus bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
+    MODEL_CONFIG=/opt/tripwire/PHASE3_MODEL_CONFIG RUN_DIR=/opt/tripwire/PHASE3_RUN_DIR bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE5" = "true" ]; then
@@ -371,17 +377,17 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase3-model-lock.json': '/opt/tripwire/PHASE3_MODEL_LOCK',
                    'phase5-model-lock.json': '/opt/tripwire/PHASE5_MODEL_LOCK',
                    'phase3-corpus.log': '/root/phase3-corpus.log',
-                   'phase3-manifest.json': '/opt/tripwire/data/phase3-corpus/manifest.json',
-                   'phase3-summary.json': '/opt/tripwire/data/phase3-corpus/corpus-summary.json',
-                   'phase3-runs.jsonl': '/opt/tripwire/data/phase3-corpus/runs.jsonl',
-                   'phase3-calls.jsonl': '/opt/tripwire/data/phase3-corpus/calls.jsonl',
-                   'phase3-events.jsonl': '/opt/tripwire/data/phase3-corpus/events.jsonl',
-                   'phase3-joined.jsonl': '/opt/tripwire/data/phase3-corpus/joined.jsonl',
-                   'phase3-orphan-events.jsonl': '/opt/tripwire/data/phase3-corpus/orphan-events.jsonl',
-                   'phase3-egress-lockdown.log': '/opt/tripwire/data/phase3-corpus/egress-lockdown.log',
-                   'phase3-agent-account.log': '/opt/tripwire/data/phase3-corpus/agent-account.log',
-                   'phase3-loader.log': '/opt/tripwire/data/phase3-corpus/loader.log',
-                   'phase3-runner.log': '/opt/tripwire/data/phase3-corpus/runner.log',
+                   'phase3-manifest.json': '/opt/tripwire/PHASE3_RUN_DIR/manifest.json',
+                   'phase3-summary.json': '/opt/tripwire/PHASE3_RUN_DIR/corpus-summary.json',
+                   'phase3-runs.jsonl': '/opt/tripwire/PHASE3_RUN_DIR/runs.jsonl',
+                   'phase3-calls.jsonl': '/opt/tripwire/PHASE3_RUN_DIR/calls.jsonl',
+                   'phase3-events.jsonl': '/opt/tripwire/PHASE3_RUN_DIR/events.jsonl',
+                   'phase3-joined.jsonl': '/opt/tripwire/PHASE3_RUN_DIR/joined.jsonl',
+                   'phase3-orphan-events.jsonl': '/opt/tripwire/PHASE3_RUN_DIR/orphan-events.jsonl',
+                   'phase3-egress-lockdown.log': '/opt/tripwire/PHASE3_RUN_DIR/egress-lockdown.log',
+                   'phase3-agent-account.log': '/opt/tripwire/PHASE3_RUN_DIR/agent-account.log',
+                   'phase3-loader.log': '/opt/tripwire/PHASE3_RUN_DIR/loader.log',
+                   'phase3-runner.log': '/opt/tripwire/PHASE3_RUN_DIR/runner.log',
                    'phase5-injections.log': '/root/phase5-injections.log',
                    'phase5-manifest.json': '/opt/tripwire/data/injection-corpus/manifest.json',
                    'phase5-summary.json': '/opt/tripwire/data/injection-corpus/summary.json',
@@ -447,6 +453,7 @@ systemctl poweroff
     guest_script = guest_script.replace('"PHASE3" = "true"',
                                         f'"{str(options.phase3).lower()}" = "true"')
     guest_script = guest_script.replace('PHASE3_MODEL_CONFIG', str(phase3_model_config))
+    guest_script = guest_script.replace('PHASE3_RUN_DIR', phase3_run_dir)
     guest_script = guest_script.replace('PHASE3_MODEL_LOCK', str(phase3_model_lock))
     guest_script = guest_script.replace('PHASE5_MODEL_LOCK', str(phase5_model_lock))
     guest_script = guest_script.replace('PHASE5_MODEL_CONFIG', str(phase5_model_config))
@@ -483,6 +490,7 @@ systemctl poweroff
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
                   'memory_mib': memory_mib, 'disk_gib': disk_gib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,
+                  'phase3_run_dir': phase3_run_dir if options.phase3 else None,
                   'phase5': options.phase5, 'phase6': options.phase6, 'phase7': options.phase7,
                   'reuse_provisioned_base': reuse_provisioned_base,
                   'qemu_arguments': qemu_args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
