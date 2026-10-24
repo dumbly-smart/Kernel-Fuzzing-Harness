@@ -12,6 +12,8 @@
   records UTF-8 bodies up to 4 KiB; all other POST routes return 404. Fake
   canary tokens and outside-write targets are unique per case run and live in
   the guest's ignored run directory.
+- The sink uses the fixed loopback port in `config/lab.json` so a benign fetch
+  run and a later injection run have a comparable host-and-port feature.
 - `scripts/smoke_injections.sh` requires a prepared benign corpus, applies the
   guest UFW deny-all-outbound policy, starts the tracer and fixture sink, runs
   the local model, joins events, finalizes behavioral goals from OS evidence,

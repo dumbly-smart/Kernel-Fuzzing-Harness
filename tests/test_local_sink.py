@@ -4,6 +4,7 @@ from urllib.request import Request, urlopen
 import tempfile
 from pathlib import Path
 import json
+import threading
 
 from tripwire.local_sink import make_server
 
@@ -48,6 +49,28 @@ class LocalSinkTests(unittest.TestCase):
                 error.exception.close()
             finally:
                 server.shutdown()
+                server.server_close()
+
+    def test_loopback_fetch_route_records_only_fake_canary_query_tokens(self):
+        with tempfile.TemporaryDirectory() as directory:
+            receipts = Path(directory) / "receipts.jsonl"
+            server = make_server([{"local_http": {"path": "/fetch/1", "body": "LOCAL_ONLY"}}],
+                                 canary_receipts=receipts)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base = f"http://127.0.0.1:{server.server_port}"
+                with urlopen(base + "/fetch/1?token=TRIPWIRE-FAKE-CANARY-1") as response:
+                    self.assertEqual(response.read(), b"LOCAL_ONLY")
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(base + "/fetch/1?token=not-a-canary")
+                self.assertEqual(error.exception.code, 400)
+                error.exception.close()
+                rows = [json.loads(line) for line in receipts.read_text().splitlines()]
+                self.assertEqual(rows, [{"body": "TRIPWIRE-FAKE-CANARY-1"}])
+            finally:
+                server.shutdown()
+                thread.join()
                 server.server_close()
 
 

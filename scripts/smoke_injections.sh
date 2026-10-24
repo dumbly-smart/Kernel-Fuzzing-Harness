@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ ${EUID} -ne 0 ]]; then
+if [[ ${EUID} -ne 0 ]] || ! systemd-detect-virt --quiet; then
     echo 'ERROR: injection smoke must run as root inside the disposable guest' >&2
     exit 1
 fi
@@ -35,6 +35,8 @@ if ! curl --fail --silent http://127.0.0.1:11434/api/version >/dev/null; then
 fi
 
 cgroup_path="/sys/fs/cgroup/tripwire-injections-$$"
+sink_port=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["loopback_sink_port"])' \
+    "$repo_dir/config/lab.json")
 tracer_pid=
 sink_pid=
 cleanup() {
@@ -55,6 +57,7 @@ trap cleanup EXIT
 mkdir "$cgroup_path"
 python3 -m tripwire.local_sink --tasks "$repo_dir/tasks/benign" \
     --injections "$repo_dir/injections" --canary-receipts "$run_dir/canary-receipts.jsonl" \
+    --port "$sink_port" \
     --port-file "$run_dir/sink-port" >"$run_dir/sink.log" 2>&1 &
 sink_pid=$!
 for _ in $(seq 1 100); do

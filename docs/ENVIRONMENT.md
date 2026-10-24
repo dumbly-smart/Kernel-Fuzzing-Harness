@@ -33,6 +33,9 @@
   performance is inferred from the catalog page.
 - Research parameters for detector features, task-level split, n-gram order and
   FPR targets live in `config/detectors.json`.
+- The local fixture sink binds to guest loopback port 18481, recorded in
+  `config/lab.json`. Keeping the same port across corpus and attack runs avoids
+  treating a random ephemeral port as a behavioral deviation.
 
 ## Accepted guest — 2026-10-22
 

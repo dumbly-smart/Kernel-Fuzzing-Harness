@@ -1,0 +1,4 @@
+{
+  "loopback_sink_port": 18481,
+  "notes": "Fixed guest-loopback port makes host-and-port features comparable across corpus, injection, and mimicry runs."
+}

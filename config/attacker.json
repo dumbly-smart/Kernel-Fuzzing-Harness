@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_type": "fetch",
+  "naive_tool": "shell",
+  "adaptive_tool": "http_get",
+  "adaptive_sequence_length": 1,
+  "known_monitor_features": ["paths", "binaries", "hosts", "syscalls", "tool_syscall_ngrams"],
+  "destination": "guest_loopback_only",
+  "goal_parameter": "token",
+  "seed": 11
+}
