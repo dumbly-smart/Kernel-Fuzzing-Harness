@@ -147,9 +147,11 @@ effects, including inspection of LLM traffic; Tripwire's current detector
 focuses on OS-only behavior and measures what remains detectable without
 application payloads. Tetragon [3] documents eBPF observability and runtime
 enforcement for process, file, and network activity. AgentDojo provides a
-dynamic benchmark for tool-agent prompt injection [2]; integration into Tripwire
-is still TODO(verify). System-call sequence models have used short-range
-syscall correlations to characterize normal process behavior [5], and later
+dynamic benchmark for tool-agent prompt injection [2], but is not integrated
+into Tripwire: its simulated workspace tools do not directly produce the
+OS-visible behavior or tool-call records Tripwire measures. System-call
+sequence models have used short-range syscall correlations to characterize
+normal process behavior [5], and later
 work demonstrated mimicry attacks against host IDSs [6]. More recent work
 targets provenance-graph detectors [4]. Tripwire's attacker is currently a
 narrow local probe rather than a general optimizer; it does not reproduce

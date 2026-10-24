@@ -48,3 +48,24 @@ canary POST, goal finalization, prompt-classifier explanations, and attack rows
 remaining outside detector training/calibration. Full acceptance awaits a
 completed Phase 3 model/corpus guest. These tests do not establish agent
 takeover rates or monitor effectiveness; those require successful guest runs.
+
+## AgentDojo integration review
+
+AgentDojo is cited as related work, but its benchmark is not wired into this
+harness. The reviewed workspace suite uses a separate `TaskSuite` and Python
+function tools over an environment containing benchmark-owned Inbox, Calendar,
+and CloudDrive state. Tripwire instead logs its own file, shell, and loopback
+HTTP wrappers. Running AgentDojo's tools directly would not produce equivalent
+OS-visible actions or Tripwire's tool-call JSONL, so joining those traces would
+not be a valid drop-in comparison.
+
+AgentDojo does document a local-model route through an OpenAI-compatible
+endpoint, so paid API use is not inherently required. A defensible integration
+would still need an adapter that preserves benchmark task semantics, emits
+Tripwire call records, pins the complete dependency set, and labels simulated
+state changes separately from OS effects. Until that adapter exists, the six
+local injection cases are Tripwire-authored cases, not AgentDojo cases. No
+AgentDojo code or payloads were copied. Sources: the
+[AgentDojo repository](https://github.com/ethz-spylab/agentdojo), its
+[v1.2.2 workspace suite](https://github.com/ethz-spylab/agentdojo/tree/main/src/agentdojo/default_suites/v1_2_2/workspace),
+and the paper in the related-work references.
