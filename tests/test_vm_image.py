@@ -15,6 +15,25 @@ spec.loader.exec_module(vm)
 
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_persists_phase3_diagnostics_and_run_artifacts(self):
+        artifacts = {
+            "model-install.log": "Ollama ready\n",
+            "phase3-corpus.log": "ERROR: egress setup failed\n",
+            "phase3-runs.jsonl": '{"run_id":"one"}\n',
+            "unapproved.txt": "do not write",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            vm.write_guest_artifacts(root, artifacts)
+
+            self.assertEqual((root / "model-install.log").read_text(), "Ollama ready\n")
+            self.assertEqual((root / "phase3-corpus.log").read_text(),
+                             "ERROR: egress setup failed\n")
+            self.assertEqual((root / "phase3-runs.jsonl").read_text(),
+                             '{"run_id":"one"}\n')
+            self.assertFalse((root / "unapproved.txt").exists())
+
     def test_make_check_scopes_python_bytecode_cache_by_user(self):
         root = Path(__file__).resolve().parents[1]
         result = subprocess.run(

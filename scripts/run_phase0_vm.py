@@ -23,10 +23,48 @@ VM = ROOT / 'data/vm'
 IMAGE = 'ubuntu-24.04-server-cloudimg-amd64.img'
 FINGERPRINT = 'D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81'
 RESULT_CHUNK_CHARS = 3000
+GUEST_ARTIFACT_NAMES = (
+    'setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
+    'smoke-agent-join.log', 'smoke-events.jsonl', 'phase2-events.jsonl',
+    'phase2-calls.jsonl', 'phase2-joins.jsonl', 'phase2-join-report.json',
+    'environment.lock.json', 'model-install.log', 'model.lock.json',
+    'phase3-model-lock.json', 'phase5-model-lock.json', 'phase3-corpus.log',
+    'phase3-manifest.json', 'phase3-summary.json', 'phase3-runs.jsonl',
+    'phase3-calls.jsonl', 'phase3-events.jsonl', 'phase3-joined.jsonl',
+    'phase3-orphan-events.jsonl', 'phase3-egress-lockdown.log',
+    'phase3-agent-account.log', 'phase3-loader.log', 'phase3-runner.log',
+    'phase5-agent-account.log', 'phase5-injections.log', 'phase5-manifest.json',
+    'phase5-summary.json', 'phase5-runs.jsonl', 'phase5-calls.jsonl',
+    'phase5-events.jsonl', 'phase5-joined.jsonl', 'phase5-join-report.json',
+    'phase5-canary-receipts.jsonl', 'phase5-egress-lockdown.log',
+    'phase5-prompt-classifier.json', 'phase5-detector-results.json',
+    'phase5-detector-scores.jsonl', 'phase5-false-positives.jsonl',
+    'phase5-attack-verdicts.jsonl', 'phase5-runner.log', 'phase5-sink.log',
+    'phase5-loader.log', 'phase5-join.log', 'phase5-detector-eval.log',
+    'phase6-mimicry.log', 'phase6-manifest.json', 'phase6-runs.jsonl',
+    'phase6-calls.jsonl', 'phase6-events.jsonl', 'phase6-joined.jsonl',
+    'phase6-join-report.json', 'phase6-canary-receipts.jsonl',
+    'phase6-detector-results.json', 'phase6-detector-scores.jsonl',
+    'phase6-false-positives.jsonl', 'phase6-attack-verdicts.jsonl',
+    'phase6-summary.json', 'phase6-egress-lockdown.log', 'phase6-loader.log',
+    'phase6-sink.log', 'phase6-runner.log', 'phase6-join.log',
+    'phase6-detector-eval.log', 'phase7-eval.log',
+    'phase7-detector-results.json', 'phase7-ablation-results.json',
+    'phase7-ablation-false-positives.jsonl',
+    'phase7-ablation-attack-verdicts.jsonl', 'phase7-taxonomy-results.json',
+    'phase7-ablation-plot.svg',
+)
 
 
 def command(args, **kwargs):
     return subprocess.run(args, check=True, **kwargs)
+
+
+def write_guest_artifacts(directory, files):
+    directory.mkdir(parents=True, exist_ok=True)
+    for name in GUEST_ARTIFACT_NAMES:
+        if name in files:
+            (directory / name).write_text(files[name])
 
 
 def verify_image():
@@ -458,33 +496,7 @@ systemctl poweroff
         server.server_close()
     serial = (VM / 'serial.log').read_text(errors='replace')
     result = decode_guest_result(serial)
-    for name in ('setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
-                 'smoke-agent-join.log', 'smoke-events.jsonl', 'phase2-events.jsonl',
-                 'phase2-calls.jsonl', 'phase2-joins.jsonl', 'phase2-join-report.json',
-                 'environment.lock.json', 'phase3-egress-lockdown.log',
-                 'phase3-agent-account.log', 'phase5-agent-account.log',
-                 'phase5-injections.log', 'phase5-manifest.json', 'phase5-summary.json',
-                 'phase5-runs.jsonl', 'phase5-calls.jsonl', 'phase5-events.jsonl',
-                 'phase5-joined.jsonl', 'phase5-join-report.json',
-                 'phase5-canary-receipts.jsonl', 'phase5-egress-lockdown.log',
-                 'phase5-prompt-classifier.json', 'phase5-detector-results.json',
-                 'phase5-detector-scores.jsonl', 'phase5-false-positives.jsonl',
-                 'phase5-attack-verdicts.jsonl', 'phase5-runner.log', 'phase5-sink.log',
-                 'phase5-loader.log', 'phase5-join.log', 'phase5-detector-eval.log',
-                 'phase6-mimicry.log', 'phase6-manifest.json', 'phase6-runs.jsonl',
-                 'phase6-calls.jsonl', 'phase6-events.jsonl', 'phase6-joined.jsonl',
-                 'phase6-join-report.json', 'phase6-canary-receipts.jsonl',
-                 'phase6-detector-results.json', 'phase6-detector-scores.jsonl',
-                 'phase6-false-positives.jsonl', 'phase6-attack-verdicts.jsonl',
-                 'phase6-summary.json', 'phase6-egress-lockdown.log',
-                 'phase6-loader.log', 'phase6-sink.log', 'phase6-runner.log',
-                 'phase6-join.log', 'phase6-detector-eval.log', 'phase7-eval.log',
-                 'phase7-detector-results.json', 'phase7-ablation-results.json',
-                 'phase7-ablation-false-positives.jsonl',
-                 'phase7-ablation-attack-verdicts.jsonl', 'phase7-taxonomy-results.json',
-                 'phase7-ablation-plot.svg'):
-        if name in result['files']:
-            (VM / name).write_text(result['files'][name])
+    write_guest_artifacts(VM, result['files'])
     if 'phase3-model-lock.json' in result['files']:
         (ROOT / phase3_model_lock).write_text(result['files']['phase3-model-lock.json'])
     if 'phase5-model-lock.json' in result['files']:
