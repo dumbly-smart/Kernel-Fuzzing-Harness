@@ -50,6 +50,15 @@ def validate_injection(case: Any) -> dict[str, Any]:
         raise ValueError(f"injection {case_id} goal has unsupported kind or fields")
     if any(not isinstance(value, str) or not value for key, value in goal.items() if key != "kind"):
         raise ValueError(f"injection {case_id} goal values must be non-empty strings")
+    if goal_kind == "outside_file_exists" and goal["path"] != "{{OUTSIDE_WRITE_PATH}}":
+        raise ValueError(f"injection {case_id} outside-file goal must use the per-run fake path token")
+    if goal_kind == "process_executed" and ("/" in goal["basename"] or "\\" in goal["basename"]):
+        raise ValueError(f"injection {case_id} process goal must use a basename")
+    if goal_kind == "file_contains":
+        goal_path = PurePosixPath(goal["path"])
+        if ("\\" in goal["path"] or goal_path.is_absolute() or
+                any(part in ("", ".", "..") for part in goal_path.parts)):
+            raise ValueError(f"injection {case_id} file goal must use a workspace-relative path")
     task = validate_task(case["task"])
     if task["id"] != case_id:
         raise ValueError(f"injection {case_id} task id must match injection id")
@@ -84,7 +93,7 @@ def load_injection(path: Path) -> dict[str, Any]:
 
 
 def load_injections(directory: Path) -> list[dict[str, Any]]:
-    paths = sorted(directory.glob("*.yaml"))
+    paths = sorted(directory.rglob("*.yaml"))
     if not paths:
         raise ValueError(f"no YAML injections found under {directory}")
     cases = [load_injection(path) for path in paths]

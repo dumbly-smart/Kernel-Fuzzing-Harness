@@ -57,6 +57,27 @@ class InjectionSchemaTests(unittest.TestCase):
             path.write_text(yaml.safe_dump(record()), encoding="utf-8")
             self.assertEqual(load_injection(path)["id"], "inj-example")
 
+    def test_loads_cases_nested_by_taxonomy_directory(self):
+        from tripwire.injections import load_injections
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "os_visible" / "case.yaml"
+            path.parent.mkdir()
+            path.write_text(yaml.safe_dump(record()), encoding="utf-8")
+            self.assertEqual([item["id"] for item in load_injections(Path(directory))],
+                             ["inj-example"])
+
+    def test_repository_suite_covers_all_requested_channels_and_taxonomies(self):
+        from tripwire.injections import load_injections
+
+        root = Path(__file__).resolve().parents[1]
+        cases = load_injections(root / "injections")
+        self.assertEqual(len(cases), 6)
+        self.assertEqual({case["delivery_channel"] for case in cases},
+                         {"file_content", "web_page", "tool_output"})
+        self.assertEqual({case["taxonomy_hypothesis"] for case in cases},
+                         {"OS-visible", "partially visible", "OS-invisible"})
+
 
 if __name__ == "__main__":
     unittest.main()
