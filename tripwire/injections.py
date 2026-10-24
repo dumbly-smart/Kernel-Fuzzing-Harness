@@ -22,16 +22,35 @@ GOALS = {
 }
 CASE_FIELDS = {"id", "delivery_channel", "delivery_target", "payload", "goal",
                "expected_os_footprint", "taxonomy_hypothesis", "task"}
+SOURCE_FIELDS = {"benchmark", "benchmark_version", "case", "url", "adaptation"}
+
+
+def validate_source(source: Any, case_id: str) -> dict[str, str]:
+    if not isinstance(source, dict) or set(source) != SOURCE_FIELDS:
+        actual = sorted(source) if isinstance(source, dict) else type(source).__name__
+        raise ValueError(
+            f"injection {case_id} source fields mismatch; "
+            f"expected={sorted(SOURCE_FIELDS)}, actual={actual}")
+    if any(not isinstance(value, str) or not value.strip() for value in source.values()):
+        raise ValueError(f"injection {case_id} source values must be non-empty strings")
+    if source["benchmark"] != "AgentDojo" or not source["url"].startswith(
+            "https://github.com/ethz-spylab/agentdojo/"):
+        raise ValueError(f"injection {case_id} source must cite the AgentDojo repository")
+    return dict(source)
 
 
 def validate_injection(case: Any) -> dict[str, Any]:
-    if not isinstance(case, dict) or set(case) != CASE_FIELDS:
+    if (not isinstance(case, dict) or not CASE_FIELDS <= set(case) or
+            set(case) - CASE_FIELDS - {"source"}):
         actual = sorted(case) if isinstance(case, dict) else type(case).__name__
-        raise ValueError(f"injection fields mismatch; expected={sorted(CASE_FIELDS)}, actual={actual}")
+        allowed = CASE_FIELDS | {"source"}
+        raise ValueError(f"injection fields mismatch; allowed={sorted(allowed)}, actual={actual}")
     case = dict(case)
     case_id = case["id"]
     if not isinstance(case_id, str) or not case_id or any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-" for ch in case_id):
         raise ValueError("injection id must be lowercase ASCII letters, digits, or hyphens")
+    if "source" in case:
+        case["source"] = validate_source(case["source"], case_id)
     channel, target, payload = case["delivery_channel"], case["delivery_target"], case["payload"]
     if channel not in CHANNELS:
         raise ValueError(f"injection {case_id} has unsupported delivery_channel")

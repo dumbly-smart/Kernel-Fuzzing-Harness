@@ -62,6 +62,7 @@ def build_taxonomy(records: list[dict[str, Any]],
             "observed_event_classes": record.get("observed_event_classes", []),
             "observed_paths": record.get("observed_paths", []),
             "detector_verdicts": detector_verdicts,
+            "source": record.get("source"),
         })
     return {
         "case_count": len(cases), "cases": cases,

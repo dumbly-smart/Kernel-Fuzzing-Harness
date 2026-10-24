@@ -35,7 +35,7 @@ joined `execve`/`execveat` event; fake-canary receipt is checked at the local
 sink. The monitor observes connection metadata, not HTTP body contents, which
 is why the exfiltration case is hypothesized as partially visible.
 
-The suite has one seed per case by default and only six attack cases. Do not
+The suite has one seed per case by default and only seven attack cases. Do not
 interpret its rates as population estimates. Model failure remains an explicit
 unsuccessful run row. The current development host could not complete even the
 2 GiB guest launch safely; no attack success, prompt-classifier rate, or monitor
@@ -51,21 +51,26 @@ takeover rates or monitor effectiveness; those require successful guest runs.
 
 ## AgentDojo integration review
 
-AgentDojo is cited as related work, but its benchmark is not wired into this
-harness. The reviewed workspace suite uses a separate `TaskSuite` and Python
-function tools over an environment containing benchmark-owned Inbox, Calendar,
-and CloudDrive state. Tripwire instead logs its own file, shell, and loopback
+One case, `inj-agentdojo-workspace-exfil`, adapts the intent of AgentDojo's
+workspace `InjectionTask4`: exfiltrate an email security code. Tripwire uses a
+generated fake canary and the guest-loopback sink in place of the benchmark's
+simulated email state and recipient. The adaptation is labeled in its YAML and
+copied into each run record. It is not a canonical AgentDojo run, and its rate
+must not be compared to AgentDojo's benchmark results.
+
+The full benchmark is not wired into this harness. Its workspace suite uses a
+separate `TaskSuite` and Python function tools over benchmark-owned Inbox,
+Calendar, and CloudDrive state. Tripwire logs its own file, shell, and loopback
 HTTP wrappers. Running AgentDojo's tools directly would not produce equivalent
 OS-visible actions or Tripwire's tool-call JSONL, so joining those traces would
 not be a valid drop-in comparison.
 
 AgentDojo does document a local-model route through an OpenAI-compatible
 endpoint, so paid API use is not inherently required. A defensible integration
-would still need an adapter that preserves benchmark task semantics, emits
-Tripwire call records, pins the complete dependency set, and labels simulated
-state changes separately from OS effects. Until that adapter exists, the six
-local injection cases are Tripwire-authored cases, not AgentDojo cases. No
-AgentDojo code or payloads were copied. Sources: the
+would still need a separate adapter that preserves all benchmark task
+semantics, emits Tripwire call records, pins the complete dependency set, and
+labels simulated state changes separately from OS effects. No AgentDojo code
+or verbatim payloads were copied. Sources: the
 [AgentDojo repository](https://github.com/ethz-spylab/agentdojo), its
 [v1.2.2 workspace suite](https://github.com/ethz-spylab/agentdojo/tree/main/src/agentdojo/default_suites/v1_2_2/workspace),
 and the paper in the related-work references.

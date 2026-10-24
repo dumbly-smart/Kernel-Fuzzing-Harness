@@ -15,8 +15,8 @@
   code was copied into Tripwire.
 - `docs/paper/WORKSHOP_DRAFT.md` is the workshop paper skeleton. Verified
   primary sources are linked, including foundational syscall-sequence and
-  mimicry work. AgentDojo integration feasibility and all missing measurements
-  remain marked for follow-up rather than reported as completed.
+  mimicry work. One AgentDojo scenario is adapted; full benchmark integration
+  and all missing measurements remain follow-up work, not completed results.
 
 ## Acceptance status
 

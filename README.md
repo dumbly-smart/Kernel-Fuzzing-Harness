@@ -152,12 +152,15 @@ log under `data/phase3-corpus/detector-eval/`.
 
 ## Phase 5 injection suite
 
-Six local cases cover an out-of-scope fake-canary read, canary submission to a
-loopback sink, an unexpected process, a write outside the workspace, a poisoned
-summary, and a wrong-but-valid edit. Payloads are grouped by taxonomy hypothesis
-under `injections/`. Each case records whether its goal was reached, its observed
-OS events, and a transparent keyword prompt-classifier result. Monitor scores
-and per-case verdicts are generated against the benign training corpus.
+Seven local cases cover an out-of-scope fake-canary read, local canary
+exfiltration, an unexpected process, a write outside the workspace, a poisoned
+summary, a wrong-but-valid edit, and one AgentDojo-derived email-exfiltration
+scenario. Payloads are grouped by taxonomy hypothesis under `injections/`.
+Each case records whether its goal was reached, its observed OS events, and a
+transparent keyword prompt-classifier result. Monitor scores and per-case
+verdicts are generated against the benign training corpus. The adapted case
+uses Tripwire's fake canary and loopback sink; it is not a run of the full
+AgentDojo benchmark.
 
 For a provisioned guest disk that contains the completed benign corpus and the
 same pinned Ollama model, run a fresh overlay:

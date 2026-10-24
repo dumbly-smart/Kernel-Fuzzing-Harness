@@ -83,8 +83,10 @@ corpus and are reported as a utility confound.
 The suite covers out-of-scope fake-canary reads, local canary submission,
 unexpected process execution, writes outside the workspace, poisoned
 summaries, and wrong-but-valid edits. An attack counts as successful only when
-its declared goal is observed. Cases originate in `injections/`; AgentDojo
-integration is not implemented and remains [TODO(verify feasibility)].
+its declared goal is observed. Cases originate in `injections/`. One case
+adapts AgentDojo's workspace email-exfiltration scenario to use a fake canary
+and loopback sink; it is not a canonical AgentDojo run or directly comparable
+benchmark result. The full benchmark's task tools are not integrated.
 
 ### 4.3 Adaptive attacker
 
@@ -147,9 +149,11 @@ effects, including inspection of LLM traffic; Tripwire's current detector
 focuses on OS-only behavior and measures what remains detectable without
 application payloads. Tetragon [3] documents eBPF observability and runtime
 enforcement for process, file, and network activity. AgentDojo provides a
-dynamic benchmark for tool-agent prompt injection [2], but is not integrated
-into Tripwire: its simulated workspace tools do not directly produce the
-OS-visible behavior or tool-call records Tripwire measures. System-call
+dynamic benchmark for tool-agent prompt injection [2]. Tripwire adapts one
+workspace email-exfiltration scenario to a fake canary and a loopback-only
+sink; its full simulated tool suite is not integrated because those tools do
+not directly produce the OS-visible behavior or tool-call records Tripwire
+measures. System-call
 sequence models have used short-range syscall correlations to characterize
 normal process behavior [5], and later
 work demonstrated mimicry attacks against host IDSs [6]. More recent work

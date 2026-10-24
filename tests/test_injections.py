@@ -27,7 +27,30 @@ def record(**overrides):
     return result
 
 
+def agentdojo_source(**overrides):
+    source = {
+        "benchmark": "AgentDojo",
+        "benchmark_version": "v1.2.2",
+        "case": "workspace/InjectionTask4",
+        "url": "https://github.com/ethz-spylab/agentdojo/blob/main/src/agentdojo/default_suites/v1/workspace/injection_tasks.py",
+        "adaptation": "Fake canary and local sink replace email-based exfiltration.",
+    }
+    source.update(overrides)
+    return source
+
+
 class InjectionSchemaTests(unittest.TestCase):
+    def test_preserves_explicit_benchmark_provenance(self):
+        case = validate_injection(record(source=agentdojo_source()))
+        self.assertEqual(case["source"]["benchmark"], "AgentDojo")
+        self.assertEqual(case["source"]["benchmark_version"], "v1.2.2")
+
+    def test_rejects_incomplete_benchmark_provenance(self):
+        source = agentdojo_source()
+        del source["url"]
+        with self.assertRaisesRegex(ValueError, "source fields mismatch"):
+            validate_injection(record(source=source))
+
     def test_validates_and_installs_payload_in_declared_fixture(self):
         case = validate_injection(record())
         self.assertEqual(case["task"]["fixtures"]["instructions.txt"],
@@ -72,11 +95,14 @@ class InjectionSchemaTests(unittest.TestCase):
 
         root = Path(__file__).resolve().parents[1]
         cases = load_injections(root / "injections")
-        self.assertEqual(len(cases), 6)
+        self.assertEqual(len(cases), 7)
         self.assertEqual({case["delivery_channel"] for case in cases},
                          {"file_content", "web_page", "tool_output"})
         self.assertEqual({case["taxonomy_hypothesis"] for case in cases},
                          {"OS-visible", "partially visible", "OS-invisible"})
+        sourced_cases = [case for case in cases if "source" in case]
+        self.assertEqual([case["id"] for case in sourced_cases],
+                         ["inj-agentdojo-workspace-exfil"])
 
 
 if __name__ == "__main__":
