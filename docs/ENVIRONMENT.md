@@ -45,8 +45,21 @@ then succeeded on 6.8.0-146-generic. A repeated setup succeeded against the same
 lock. `make check` and all 10 tests passed as user `ubuntu`; see
 [the guest acceptance log](notes/phase0-guest-acceptance.txt).
 BTF was readable, cgroup v2 was present, and the clang BPF backend compiled an
-empty object. No BPF program was loaded: verifier and tracer smoke checks belong
-to Phase 1. The former host failure log remains as historical evidence.
+empty object. That was the Phase 0 check; the tracer was loaded in the separate
+Phase 1 acceptance run below. The former host failure log remains as historical
+evidence.
+
+## Phase 1 tracer acceptance — 2026-10-24
+
+The accepted baseline disk was reused read-only behind a fresh disposable
+overlay. Setup idempotence, `make check`, 27 Python tests, BPF compilation,
+libbpf loading/tracepoint attachment and the root-only smoke all passed on the
+same pinned environment above. The final smoke emitted 391 records with zero
+reported ring-buffer drops. Configuration was 16 MiB ring buffer, 256-byte path
+fields and 1000 ms stats polling. Summary and exact guest record:
+[phase1-guest-acceptance.txt](notes/phase1-guest-acceptance.txt). The sample
+JSONL is in `data/samples/phase1-smoke.jsonl`; raw overlays and run artifacts
+remain ignored under `data/vm/`.
 
 Snapshot sources are temporary and isolated from guest sources and indexes;
 signature verification stays enabled. Check-Valid-Until is disabled only for

@@ -1,8 +1,9 @@
 # Tripwire
 
-Research scaffold for an eBPF behavioral monitor of tool-using LLM agents and an
-adaptive attacker against that monitor. Phase 0 only: no tracer, agent, detector,
-attacks, or experimental results exist yet.
+Research project for an eBPF behavioral monitor of tool-using LLM agents and an
+adaptive attacker against that monitor. Phase 0 and the Phase 1 cgroup-scoped
+tracer are implemented. The agent harness, behavior corpus, detectors, injection
+suite, adaptive attacker, and research measurements remain to be built.
 
 All experiments belong in a throwaway guest you control, using fake secrets and
 local sinks. Never mount host home directories or pass through host credentials.
@@ -73,11 +74,30 @@ packages; experimental sinks in later phases must be local.
 See [environment status](docs/ENVIRONMENT.md),
 [threat model](docs/THREAT_MODEL.md), and [Phase 0 notes](docs/notes/phase0.md).
 
+## Phase 1 tracer
+
+The C/libbpf CO-RE tracer records syscall metadata, paths, process fork/exit
+events, and IPv4/IPv6 connection destinations for one cgroup v2 subtree. It
+never copies write buffers or network payloads. From the repository root in
+the pinned disposable guest, run:
+
+```sh
+make check
+make test
+sudo bash scripts/smoke_bpf.sh
+```
+
+The smoke test uses a temporary cgroup and a TCP listener bound only to
+`127.0.0.1`. It validates the stream and prints its event/drop summary. A
+reviewable trace sample is at [data/samples/phase1-smoke.jsonl](data/samples/phase1-smoke.jsonl).
+See [Phase 1 learning and limits](docs/notes/phase1.md) and the
+[guest acceptance record](docs/notes/phase1-guest-acceptance.txt).
+
 
 ## Phase 0 acceptance
 
 Passed in the disposable QEMU/KVM guest on 2026-10-22: setup, kernel reboot,
 repeated setup, `make check`, and 10 tests. See the
 [acceptance log](docs/notes/phase0-guest-acceptance.txt) and
-[exact environment](docs/ENVIRONMENT.md). This checks BPF compilation;
-loading programs and validating tracer behavior are Phase 1 work.
+[exact environment](docs/ENVIRONMENT.md). Phase 1 then loaded the tracer and
+passed its smoke test; see the Phase 1 acceptance record above.
