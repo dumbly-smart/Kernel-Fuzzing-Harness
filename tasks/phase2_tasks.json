@@ -1,0 +1,45 @@
+[
+  {
+    "id": "phase2-01-read-note",
+    "actions": [{"tool": "file_read", "args": {"path": "note.txt"}}]
+  },
+  {
+    "id": "phase2-02-write-summary",
+    "actions": [{"tool": "file_write", "args": {"path": "summary.md", "content": "Synthetic task summary.\n"}}]
+  },
+  {
+    "id": "phase2-03-shell-create-lines",
+    "actions": [{"tool": "shell", "args": {"command": "printf 'first\\nsecond\\n' > lines.txt"}}]
+  },
+  {
+    "id": "phase2-04-search-source",
+    "actions": [{"tool": "shell", "args": {"command": "grep -n 'beta' source.txt"}}]
+  },
+  {
+    "id": "phase2-05-read-existing-report",
+    "actions": [{"tool": "file_read", "args": {"path": "report.txt"}}]
+  },
+  {
+    "id": "phase2-06-fetch-local-page",
+    "actions": [{"tool": "http_get", "args": {"url": "__SINK_URL__/page"}}]
+  },
+  {
+    "id": "phase2-07-run-child-process",
+    "actions": [{"tool": "shell", "args": {"command": "python3 -c \"import subprocess; subprocess.run(['/bin/true'], check=True)\""}}]
+  },
+  {
+    "id": "phase2-08-write-and-read-nested",
+    "actions": [
+      {"tool": "file_write", "args": {"path": "nested/result.txt", "content": "nested synthetic result\\n"}},
+      {"tool": "shell", "args": {"command": "cat nested/result.txt"}}
+    ]
+  },
+  {
+    "id": "phase2-09-failed-file-probe",
+    "actions": [{"tool": "shell", "args": {"command": "cat absent.txt >/dev/null 2>&1 || true"}}]
+  },
+  {
+    "id": "phase2-10-fetch-index",
+    "actions": [{"tool": "http_get", "args": {"url": "__SINK_URL__/index"}}]
+  }
+]

@@ -59,7 +59,7 @@ def main():
     seed = VM / 'seed'
     seed.mkdir(exist_ok=True)
     if overlay.exists():
-        raise RuntimeError('guest.qcow2 already exists; preserve it or remove it explicitly before a fresh run')
+        raise RuntimeError(f'{overlay} already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
     (seed / 'vendor-data').write_text('#cloud-config\n{}\n')
     (seed / 'meta-data').write_text(
@@ -88,12 +88,21 @@ if [ "$status" -eq 0 ]; then
     bash /opt/tripwire/scripts/smoke_bpf.sh > /root/smoke.log 2>&1
     status=$?
 fi
+if [ "$status" -eq 0 ]; then
+    bash /opt/tripwire/scripts/smoke_agent_join.sh > /root/smoke-agent-join.log 2>&1
+    status=$?
+fi
 python3 - "$status" <<'RESULT'
 import base64, json, pathlib, sys
 files = {}
 for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/setup-repeat.log',
                    'acceptance.log': '/root/acceptance.log', 'smoke.log': '/root/smoke.log',
+                   'smoke-agent-join.log': '/root/smoke-agent-join.log',
                    'smoke-events.jsonl': '/opt/tripwire/data/phase1-smoke.events.jsonl',
+                   'phase2-events.jsonl': '/opt/tripwire/data/phase2-smoke.events.jsonl',
+                   'phase2-calls.jsonl': '/opt/tripwire/data/phase2-smoke.calls.jsonl',
+                   'phase2-joins.jsonl': '/opt/tripwire/data/phase2-smoke.joins.jsonl',
+                   'phase2-join-report.json': '/opt/tripwire/data/phase2-smoke.join-report.json',
                    'environment.lock.json': '/opt/tripwire/config/environment.lock.json'}.items():
     if pathlib.Path(path).exists():
         files[name] = pathlib.Path(path).read_text()
@@ -165,7 +174,9 @@ systemctl poweroff
         raise RuntimeError('guest returned no result; see data/vm/serial.log')
     result = json.loads(base64.b64decode(results[-1], validate=True))
     for name in ('setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
-                 'smoke-events.jsonl', 'environment.lock.json'):
+                 'smoke-agent-join.log', 'smoke-events.jsonl', 'phase2-events.jsonl',
+                 'phase2-calls.jsonl', 'phase2-joins.jsonl', 'phase2-join-report.json',
+                 'environment.lock.json'):
         if name in result['files']:
             (VM / name).write_text(result['files'][name])
     print(f"Guest acceptance exit: {result['status']}; artifacts: {VM}", flush=True)

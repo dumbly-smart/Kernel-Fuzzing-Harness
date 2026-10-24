@@ -2,6 +2,7 @@
   "ring_buffer_bytes": 16777216,
   "path_bytes": 256,
   "poll_interval_ms": 1000,
+  "late_event_grace_ms": 250,
   "event_order": "ring-buffer-reservation-order",
   "wall_clock": "realtime-minus-monotonic-offset-sampled-at-start"
 }

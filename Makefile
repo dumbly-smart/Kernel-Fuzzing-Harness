@@ -1,11 +1,14 @@
-.PHONY: check bpf
+.PHONY: check bpf smoke-agent-join
 check:
-	bash -n scripts/setup_vm.sh scripts/smoke_bpf.sh
+	bash -n scripts/setup_vm.sh scripts/smoke_bpf.sh scripts/smoke_agent_join.sh
 	python3 scripts/check_env.py
 	$(MAKE) bpf
 
 bpf:
 	$(MAKE) -C bpf all
+
+smoke-agent-join:
+	bash scripts/smoke_agent_join.sh
 
 .PHONY: test
 test:
