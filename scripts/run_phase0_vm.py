@@ -5,6 +5,7 @@ No host mounts, SSH keys, or host package changes. The loopback HTTP server
 serves only generated seed data and a git archive of this repository.
 """
 import base64
+import binascii
 import functools
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -12,6 +13,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import argparse
+import re
 import threading
 import time
 import uuid
@@ -20,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VM = ROOT / 'data/vm'
 IMAGE = 'ubuntu-24.04-server-cloudimg-amd64.img'
 FINGERPRINT = 'D2EB44626FDDC30B513D5BB71A5D6C4C7DB87C81'
+RESULT_CHUNK_CHARS = 3000
 
 
 def command(args, **kwargs):
@@ -95,6 +98,54 @@ def validate_guest_mode(*, base_guest, base_disk_name, reuse_provisioned_base):
     if reuse_provisioned_base and not (base_guest or base_disk_name):
         raise ValueError("reuse-provisioned-base requires a base disk")
     return bool(reuse_provisioned_base)
+
+
+def decode_guest_result(serial):
+    """Decode chunked guest artifacts, retaining compatibility with old guests."""
+    chunks = {}
+    chunk_count = None
+    legacy_payloads = []
+    chunk_pattern = re.compile(
+        r'^TRIPWIRE_RESULT_PART=(\d+)/(\d+):([A-Za-z0-9+/=]+)')
+    legacy_pattern = re.compile(r'^TRIPWIRE_RESULT=([A-Za-z0-9+/=]+)')
+    for line in serial.splitlines():
+        match = chunk_pattern.match(line)
+        if match:
+            index, total = int(match.group(1)), int(match.group(2))
+            if total < 1 or index < 1 or index > total:
+                raise RuntimeError('guest result has an invalid chunk index')
+            if chunk_count is not None and total != chunk_count:
+                raise RuntimeError('guest result has inconsistent chunk counts')
+            chunk_count = total
+            value = match.group(3)
+            if index in chunks and chunks[index] != value:
+                raise RuntimeError(
+                    f'guest result chunk {index} is duplicated with different data')
+            chunks[index] = value
+            continue
+        match = legacy_pattern.match(line)
+        if match:
+            legacy_payloads.append(match.group(1))
+
+    if chunks:
+        if len(chunks) != chunk_count or any(index not in chunks
+                                             for index in range(1, chunk_count + 1)):
+            raise RuntimeError(
+                f'incomplete guest result: received {len(chunks)} of {chunk_count} chunks')
+        payload = ''.join(chunks[index] for index in range(1, chunk_count + 1))
+    elif legacy_payloads:
+        payload = legacy_payloads[-1]
+    else:
+        raise RuntimeError('guest returned no result; see data/vm/serial.log')
+
+    try:
+        result = json.loads(base64.b64decode(payload, validate=True))
+    except (binascii.Error, json.JSONDecodeError) as exc:
+        raise RuntimeError(f'guest result artifact could not be decoded: {exc}') from exc
+    if (not isinstance(result, dict) or type(result.get('status')) is not int or
+            not isinstance(result.get('files'), dict)):
+        raise RuntimeError('guest result artifact has an invalid structure')
+    return result
 
 
 def main():
@@ -308,7 +359,11 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
         files[name] = pathlib.Path(path).read_text()
 payload = base64.b64encode(json.dumps({'status': int(sys.argv[1]), 'files': files}).encode()).decode()
 with open('/dev/ttyS0', 'w') as serial:
-    serial.write('\nTRIPWIRE_RESULT=' + payload + '\n')
+    chunks = [payload[index:index + RESULT_CHUNK_CHARS]
+              for index in range(0, len(payload), RESULT_CHUNK_CHARS)]
+    for index, chunk in enumerate(chunks, start=1):
+        serial.write(f'\nTRIPWIRE_RESULT_PART={index}/{len(chunks)}:{chunk}\n')
+        serial.flush()
 RESULT
 systemctl disable tripwire-phase0.service
 systemctl poweroff
@@ -327,6 +382,7 @@ systemctl poweroff
                                         f'"{str(options.phase6).lower()}" = "true"')
     guest_script = guest_script.replace('"PHASE7" = "true"',
                                         f'"{str(options.phase7).lower()}" = "true"')
+    guest_script = guest_script.replace('RESULT_CHUNK_CHARS', str(RESULT_CHUNK_CHARS))
     unit = '[Unit]\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nExecStart=/root/accept.sh\nTimeoutStartSec=infinity\n[Install]\nWantedBy=multi-user.target\n'
     # JSON is valid YAML; avoid a host PyYAML dependency.
     config = {'package_update': False, 'package_upgrade': False,
@@ -388,10 +444,7 @@ systemctl poweroff
         server.shutdown()
         server.server_close()
     serial = (VM / 'serial.log').read_text(errors='replace')
-    results = [line.split('TRIPWIRE_RESULT=', 1)[1].strip() for line in serial.splitlines() if line.startswith('TRIPWIRE_RESULT=')]
-    if not results:
-        raise RuntimeError('guest returned no result; see data/vm/serial.log')
-    result = json.loads(base64.b64decode(results[-1], validate=True))
+    result = decode_guest_result(serial)
     for name in ('setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
                  'smoke-agent-join.log', 'smoke-events.jsonl', 'phase2-events.jsonl',
                  'phase2-calls.jsonl', 'phase2-joins.jsonl', 'phase2-join-report.json',

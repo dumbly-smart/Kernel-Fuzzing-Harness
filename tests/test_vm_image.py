@@ -1,6 +1,8 @@
 """Verify that corrupt or incorrectly signed images cannot be booted."""
 import hashlib
+import base64
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -13,6 +15,30 @@ spec.loader.exec_module(vm)
 
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_decodes_chunked_guest_result_with_interleaved_console_output(self):
+        result = {"status": 2, "files": {"phase3.log": "x" * 30000}}
+        payload = base64.b64encode(json.dumps(result).encode()).decode()
+        chunk_chars = 3000
+        chunks = [payload[i:i + chunk_chars]
+                  for i in range(0, len(payload), chunk_chars)]
+        serial = "\n".join(
+            f"TRIPWIRE_RESULT_PART={index}/{len(chunks)}:{chunk}"
+            if index == 1 else
+            f"systemd status message\nTRIPWIRE_RESULT_PART={index}/{len(chunks)}:{chunk}"
+            for index, chunk in enumerate(chunks, start=1))
+
+        self.assertEqual(vm.decode_guest_result(serial), result)
+
+    def test_decodes_legacy_single_line_guest_result(self):
+        result = {"status": 0, "files": {}}
+        payload = base64.b64encode(json.dumps(result).encode()).decode()
+
+        self.assertEqual(vm.decode_guest_result(f"TRIPWIRE_RESULT={payload}\n"), result)
+
+    def test_rejects_incomplete_chunked_guest_result(self):
+        with self.assertRaisesRegex(RuntimeError, "incomplete guest result"):
+            vm.decode_guest_result("TRIPWIRE_RESULT_PART=1/2:eyJzdGF0dXMi")
+
     def test_direct_runner_requires_twice_guest_memory_before_launch(self):
         self.assertEqual(vm.validate_host_memory_headroom(2048, 4096), 4096)
         self.assertEqual(vm.validate_host_memory_headroom(2048, 5000), 4096)
