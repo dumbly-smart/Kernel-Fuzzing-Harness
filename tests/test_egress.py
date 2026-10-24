@@ -24,13 +24,16 @@ class EgressLockdownTests(unittest.TestCase):
         self.assertEqual(calls[-1], ["ufw", "status", "verbose"])
 
     def test_rejects_status_that_does_not_block_outbound(self):
+        status = "Status: active\nDefault: allow (outgoing)\n"
+
         def runner(args, **kwargs):
             if args == ["ufw", "status", "verbose"]:
-                return type("Result", (), {"stdout": "Status: inactive\n"})()
+                return type("Result", (), {"stdout": status})()
             return type("Result", (), {"stdout": ""})()
 
-        with self.assertRaisesRegex(RuntimeError, "loopback-only egress"):
+        with self.assertRaisesRegex(RuntimeError, "loopback-only egress") as caught:
             configure_loopback_only_egress(runner)
+        self.assertIn(status.rstrip(), str(caught.exception))
 
 
 if __name__ == "__main__":

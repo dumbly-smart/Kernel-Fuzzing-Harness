@@ -26,5 +26,7 @@ def configure_loopback_only_egress(
     required = ("Status: active", "deny (outgoing)", "deny (routed)",
                 "ALLOW IN", "ALLOW OUT", "on lo")
     if any(item not in status for item in required):
-        raise RuntimeError("UFW did not confirm loopback-only egress; refusing to run agent")
+        raise RuntimeError(
+            "UFW did not confirm loopback-only egress; refusing to run agent; "
+            f"observed status:\n{status.rstrip()}")
     return status
