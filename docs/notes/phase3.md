@@ -93,6 +93,13 @@ corpus outcome was recovered. The runner now rechecks the same 2x headroom
 policy every two seconds while QEMU is active and stops the guest if it falls
 below the threshold.
 
+The runtime guard was exercised on a fresh 1,536 MiB guest. It stopped QEMU
+when `MemAvailable` reached 3,035 MiB, below the 3,072 MiB requirement, and
+reported `RuntimeError: host memory headroom fell below 3072 MiB during guest
+run; MemAvailable=3035 MiB; need at least 3072 MiB (2x guest RAM)`. This
+prevented further host memory pressure, but the guest did not return a result
+bundle; this attempt also contributes no model or task measurements.
+
 ## Acceptance
 
 Pending a fresh guest run. Keep the exact model manifest digest, 90 task
