@@ -100,6 +100,7 @@ import collections
 import json
 import sys
 from tripwire.events import iter_events
+from tripwire.stats import validate_stats_cadence
 
 with open(sys.argv[1], encoding="utf-8") as trace:
     events = list(iter_events(trace))
@@ -120,6 +121,7 @@ if not types["process_fork"] or not types["process_exit"]:
 stats = [event for event in events if event["type"] == "stats"]
 if not stats:
     raise SystemExit("missing ring-buffer stats record")
+validate_stats_cadence(events, stats[-1]["poll_interval_ms"])
 summary = {
     "events": len(events),
     "event_types": dict(sorted(types.items())),

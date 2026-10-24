@@ -199,6 +199,7 @@ int main(int argc, char **argv)
     uint64_t *per_cpu_drops = NULL;
     uint64_t cgroup_id = 0, ring_bytes = 16777216, poll_interval_ms = 1000;
     uint64_t last_reported_drops = 0;
+    uint64_t next_stats_ns = 0;
     size_t link_count = 0;
     const char *output_path = NULL;
     int cpu_count = 0, option, result = EXIT_FAILURE;
@@ -297,6 +298,7 @@ int main(int argc, char **argv)
                    bpf_map__fd(skel->maps.lost_events), per_cpu_drops,
                    cpu_count, &last_reported_drops) != 0)
         goto cleanup;
+    next_stats_ns = clock_ns(CLOCK_MONOTONIC) + poll_interval_ms * 1000000ULL;
 
     while (!stopping) {
         int poll_result = ring_buffer__poll(ring, (int)poll_interval_ms);
@@ -307,11 +309,18 @@ int main(int argc, char **argv)
         }
         if (output_error)
             goto cleanup;
-        if (!stopping && emit_stats(cgroup_id, ring_bytes, poll_interval_ms,
-                                    bpf_map__fd(skel->maps.lost_events),
-                                    per_cpu_drops, cpu_count,
-                                    &last_reported_drops) != 0)
-            goto cleanup;
+        if (!stopping) {
+            uint64_t now_ns = clock_ns(CLOCK_MONOTONIC);
+
+            if (now_ns >= next_stats_ns) {
+                if (emit_stats(cgroup_id, ring_bytes, poll_interval_ms,
+                               bpf_map__fd(skel->maps.lost_events),
+                               per_cpu_drops, cpu_count,
+                               &last_reported_drops) != 0)
+                    goto cleanup;
+                next_stats_ns = now_ns + poll_interval_ms * 1000000ULL;
+            }
+        }
     }
     if (emit_stats(cgroup_id, ring_bytes, poll_interval_ms,
                    bpf_map__fd(skel->maps.lost_events), per_cpu_drops,
