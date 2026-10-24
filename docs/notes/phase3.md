@@ -64,6 +64,14 @@ quantized Qwen3 profile in a 3 GiB guest, while retaining the 8B config as the
 preferred research profile. Model size is a utility confound and will be written
 into each corpus manifest.
 
+The 1.7B constrained profile was then tried in a 3 GiB guest. It also produced
+no result marker: at 11:21 local time the host kernel's global OOM killer killed
+QEMU (PID 208076) at 3,164,716 KiB anonymous RSS. There was no corpus result to
+recover. Larger-model execution cannot be claimed on this host. The next attempt
+uses the separately pinned `config/model.tiny.json` Qwen3 0.6B Q4_K_M profile in
+a 2 GiB guest; its smaller capacity is a major task-success confound, so success
+rates and exact profile digest must accompany any behavior results.
+
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
 
 ## Acceptance

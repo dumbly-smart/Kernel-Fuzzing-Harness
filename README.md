@@ -110,17 +110,19 @@ archive checksum, exact model tag, generation parameters, and manifest digest
 recorded in separate config/lock files. The preferred profile is the pinned
 Qwen3 8B Q4_K_M model. If the VM memory budget cannot accommodate it, the
 explicit `config/model.low-memory.json` profile uses Qwen3 1.7B Q4_K_M; report
-that smaller model as a task-utility confound. Both profiles use the same tool
-allowlists and 30 YAML tasks. Each task runs with three fixed seeds, and failed
-model calls remain in the dataset.
+that smaller model as a task-utility confound. `config/model.tiny.json` is a
+last-resort 0.6B Q4_K_M profile for constrained hosts and has a more severe
+utility confound. All profiles use the same tool allowlists and 30 YAML tasks.
+Each task runs with three fixed seeds, and failed model calls remain in the
+dataset.
 
 To run the full corpus in a disposable guest based on the accepted disk:
 
 ```sh
 TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
   --base-guest --reuse-provisioned-base \
-  --memory-mib 3072 --disk-gib 24 --phase3 \
-  --phase3-model-config config/model.low-memory.json
+  --memory-mib 2048 --disk-gib 24 --phase3 \
+  --phase3-model-config config/model.tiny.json
 ```
 
 The runner hands artifacts back through the QEMU serial channel and writes them

@@ -23,6 +23,11 @@
   `qwen3:1.7b-q4_K_M` tag with the same generation settings. It is an explicit
   utility confound, not interchangeable with the preferred 8B model. Its
   manifest lock is kept separately as `config/model.low-memory.lock.json`.
+- Last-resort profile: `config/model.tiny.json` selects
+  `qwen3:0.6b-q4_K_M` for hosts that cannot safely allocate the larger guests.
+  Treat it as a severe utility confound. The official catalog lists a 523 MB
+  model artifact; this is storage size, not a measured RAM requirement. Its
+  exact manifest lock is `config/model.tiny.lock.json`.
   Model sizes and license are documented by the [official Qwen3 Ollama
   library entry](https://ollama.com/library/qwen3%3A1.7b-q4_K_M); no benchmark
   performance is inferred from the catalog page.
