@@ -43,7 +43,7 @@ class ParseEventTests(unittest.TestCase):
 
     def test_parses_process_fork(self):
         event = common("process_fork")
-        event.update(child_pid=43, child_tgid=43)
+        event.update(child_pid=43)
 
         self.assertEqual(parse_event(json.dumps(event))["child_pid"], 43)
 

@@ -62,7 +62,6 @@ def parse_event(line: str) -> dict[str, Any]:
                 _integer(event, key)
     elif event_type == "process_fork":
         _integer(event, "child_pid", minimum=1)
-        _integer(event, "child_tgid", minimum=1)
     elif event_type == "stats":
         _integer(event, "dropped_events")
         for key in ("ring_buffer_bytes", "path_bytes", "poll_interval_ms"):
