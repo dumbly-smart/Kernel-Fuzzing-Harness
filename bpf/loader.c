@@ -3,6 +3,7 @@
 #include "event_json.h"
 #include "tripwire.skel.h"
 
+#include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <errno.h>
 #include <getopt.h>
