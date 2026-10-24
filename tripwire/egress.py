@@ -23,10 +23,21 @@ def configure_loopback_only_egress(
     result = runner(["ufw", "status", "verbose"], check=True,
                     capture_output=True, text=True)
     status = result.stdout
-    required = ("Status: active", "deny (outgoing)", "deny (routed)",
-                "ALLOW IN", "ALLOW OUT", "on lo")
-    if any(item not in status for item in required):
+    forwarding_result = runner(
+        ["sysctl", "-n", "net.ipv4.ip_forward", "net.ipv6.conf.all.forwarding"],
+        check=True, capture_output=True, text=True)
+    forwarding_values = forwarding_result.stdout.splitlines()
+    forwarding_off = forwarding_values == ["0", "0"]
+    # UFW reports routed filtering as disabled when forwarding is off; verify
+    # both kernel forwarding knobs instead of treating that display as a gap.
+    routed_policy_ok = ("deny (routed)" in status or
+                        ("disabled (routed)" in status and forwarding_off))
+    status_requirements = ("Status: active", "deny (outgoing)",
+                           "ALLOW IN", "ALLOW OUT", "on lo")
+    if (any(item not in status for item in status_requirements) or
+            not routed_policy_ok or not forwarding_off):
         raise RuntimeError(
             "UFW did not confirm loopback-only egress; refusing to run agent; "
-            f"observed status:\n{status.rstrip()}")
+            f"observed status:\n{status.rstrip()}\n"
+            f"IPv4/IPv6 forwarding values: {forwarding_values!r}")
     return status
