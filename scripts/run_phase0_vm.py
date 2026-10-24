@@ -186,6 +186,7 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase3-events.jsonl': '/opt/tripwire/data/phase3-corpus/events.jsonl',
                    'phase3-joined.jsonl': '/opt/tripwire/data/phase3-corpus/joined.jsonl',
                    'phase3-orphan-events.jsonl': '/opt/tripwire/data/phase3-corpus/orphan-events.jsonl',
+                   'phase3-egress-lockdown.log': '/opt/tripwire/data/phase3-corpus/egress-lockdown.log',
                    'phase3-loader.log': '/opt/tripwire/data/phase3-corpus/loader.log',
                    'phase3-runner.log': '/opt/tripwire/data/phase3-corpus/runner.log'}.items():
     if pathlib.Path(path).exists():
@@ -269,7 +270,7 @@ systemctl poweroff
     for name in ('setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
                  'smoke-agent-join.log', 'smoke-events.jsonl', 'phase2-events.jsonl',
                  'phase2-calls.jsonl', 'phase2-joins.jsonl', 'phase2-join-report.json',
-                 'environment.lock.json'):
+                 'environment.lock.json', 'phase3-egress-lockdown.log'):
         if name in result['files']:
             (VM / name).write_text(result['files'][name])
     if 'phase3-model-lock.json' in result['files']:

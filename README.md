@@ -125,7 +125,10 @@ TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
 
 The runner hands artifacts back through the QEMU serial channel and writes them
 under ignored `data/vm/` paths. The sink is bound only to guest loopback and is
-kept outside the agent cgroup. See [Phase 3 notes](docs/notes/phase3.md) for
+kept outside the agent cgroup. Before the agent starts, the smoke runner resets
+UFW inside the disposable guest and permits traffic only on loopback; this
+keeps shell tools from reaching external hosts while preserving local Ollama
+and sink connections. See [Phase 3 notes](docs/notes/phase3.md) for
 resource outcomes and acceptance status. To evaluate the baselines in a guest,
 run `make eval-detectors`; it writes held-out scores, metrics and an FP-cause
 log under `data/phase3-corpus/detector-eval/`.

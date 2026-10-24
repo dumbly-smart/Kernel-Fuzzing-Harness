@@ -19,6 +19,7 @@ if [[ -n ${RUN_DIR:-} ]]; then
 else
     run_dir=$(mktemp -d "$repo_dir/data/benign-corpus.XXXXXX")
 fi
+python3 "$repo_dir/scripts/lockdown_egress.py" >"$run_dir/egress-lockdown.log"
 cgroup_path="/sys/fs/cgroup/tripwire-benign-$$"
 tracer_pid=
 sink_pid=
