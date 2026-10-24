@@ -13,6 +13,25 @@ spec.loader.exec_module(vm)
 
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_vm_resource_limits_accept_model_guest_size(self):
+        self.assertEqual(vm.validate_vm_resources(6144, 32), (6144, 32))
+
+    def test_vm_resource_limits_reject_too_small_or_invalid_values(self):
+        for memory, disk in ((0, 32), (512, 32), (2048, 0), (2048, 8),
+                             (True, 32), (2048, 12.5)):
+            with self.subTest(memory=memory, disk=disk):
+                with self.assertRaises(ValueError):
+                    vm.validate_vm_resources(memory, disk)
+
+    def test_base_guest_can_use_a_distinct_overlay_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'guest.qcow2').touch()
+            base, overlay = vm.vm_disk_paths(root, reuse_guest=True,
+                                             overlay_name='guest-phase3.qcow2')
+            self.assertEqual(base, root / 'guest.qcow2')
+            self.assertEqual(overlay, root / 'guest-phase3.qcow2')
+
     def test_base_guest_mode_preserves_baseline_and_uses_new_overlay(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

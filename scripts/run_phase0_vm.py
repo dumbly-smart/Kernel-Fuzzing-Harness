@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Phase 0 in QEMU using a separately verified Ubuntu cloud image.
+"""Run a Tripwire guest in QEMU using a verified Ubuntu cloud image.
 
 No host mounts, SSH keys, or host package changes. The loopback HTTP server
 serves only generated seed data and a git archive of this repository.
@@ -42,20 +42,43 @@ def verify_image():
     return actual
 
 
-def vm_disk_paths(vm_dir, reuse_guest):
+def vm_disk_paths(vm_dir, reuse_guest, overlay_name=None):
     """Select an immutable backing disk and a fresh overlay path."""
+    if overlay_name is not None and Path(overlay_name).name != overlay_name:
+        raise ValueError("overlay name must be a filename, not a path")
     if reuse_guest:
-        return vm_dir / 'guest.qcow2', vm_dir / 'guest-phase1.qcow2'
-    return vm_dir / IMAGE, vm_dir / 'guest.qcow2'
+        return vm_dir / 'guest.qcow2', vm_dir / (overlay_name or 'guest-phase1.qcow2')
+    return vm_dir / IMAGE, vm_dir / (overlay_name or 'guest.qcow2')
+
+
+def validate_vm_resources(memory_mib, disk_gib):
+    if (isinstance(memory_mib, bool) or not isinstance(memory_mib, int) or memory_mib < 1024 or
+            isinstance(disk_gib, bool) or not isinstance(disk_gib, int) or disk_gib < 12):
+        raise ValueError("VM resources require at least 1024 MiB memory and 12 GiB disk")
+    return memory_mib, disk_gib
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-guest", action="store_true",
                         help="create a fresh cloud-init instance from the previously accepted guest disk")
+    parser.add_argument("--memory-mib", type=int, default=2048,
+                        help="guest memory in MiB (default: 2048)")
+    parser.add_argument("--disk-gib", type=int, default=12,
+                        help="overlay capacity in GiB (default: 12)")
+    parser.add_argument("--overlay-name", default=None,
+                        help="new overlay filename under data/vm (default depends on mode)")
+    parser.add_argument("--timeout-seconds", type=int, default=1800,
+                        help="maximum guest run time (default: 1800)")
+    parser.add_argument("--phase3", action="store_true",
+                        help="install the pinned local model and run all benign corpus seeds")
     options = parser.parse_args()
+    memory_mib, disk_gib = validate_vm_resources(options.memory_mib, options.disk_gib)
+    if isinstance(options.timeout_seconds, bool) or options.timeout_seconds <= 0:
+        parser.error("timeout-seconds must be a positive integer")
     image_hash = verify_image()
-    base_disk, overlay = vm_disk_paths(VM, reuse_guest=options.base_guest)
+    base_disk, overlay = vm_disk_paths(VM, reuse_guest=options.base_guest,
+                                       overlay_name=options.overlay_name)
     seed = VM / 'seed'
     seed.mkdir(exist_ok=True)
     if overlay.exists():
@@ -92,6 +115,14 @@ if [ "$status" -eq 0 ]; then
     bash /opt/tripwire/scripts/smoke_agent_join.sh > /root/smoke-agent-join.log 2>&1
     status=$?
 fi
+if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
+    bash /opt/tripwire/scripts/install_local_model.sh --record-lock > /root/model-install.log 2>&1
+    status=$?
+fi
+if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
+    RUN_DIR=/opt/tripwire/data/phase3-corpus bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
+    status=$?
+fi
 python3 - "$status" <<'RESULT'
 import base64, json, pathlib, sys
 files = {}
@@ -103,7 +134,19 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase2-calls.jsonl': '/opt/tripwire/data/phase2-smoke.calls.jsonl',
                    'phase2-joins.jsonl': '/opt/tripwire/data/phase2-smoke.joins.jsonl',
                    'phase2-join-report.json': '/opt/tripwire/data/phase2-smoke.join-report.json',
-                   'environment.lock.json': '/opt/tripwire/config/environment.lock.json'}.items():
+                   'environment.lock.json': '/opt/tripwire/config/environment.lock.json',
+                   'model-install.log': '/root/model-install.log',
+                   'model.lock.json': '/opt/tripwire/config/model.lock.json',
+                   'phase3-corpus.log': '/root/phase3-corpus.log',
+                   'phase3-manifest.json': '/opt/tripwire/data/phase3-corpus/manifest.json',
+                   'phase3-summary.json': '/opt/tripwire/data/phase3-corpus/corpus-summary.json',
+                   'phase3-runs.jsonl': '/opt/tripwire/data/phase3-corpus/runs.jsonl',
+                   'phase3-calls.jsonl': '/opt/tripwire/data/phase3-corpus/calls.jsonl',
+                   'phase3-events.jsonl': '/opt/tripwire/data/phase3-corpus/events.jsonl',
+                   'phase3-joined.jsonl': '/opt/tripwire/data/phase3-corpus/joined.jsonl',
+                   'phase3-orphan-events.jsonl': '/opt/tripwire/data/phase3-corpus/orphan-events.jsonl',
+                   'phase3-loader.log': '/opt/tripwire/data/phase3-corpus/loader.log',
+                   'phase3-runner.log': '/opt/tripwire/data/phase3-corpus/runner.log'}.items():
     if pathlib.Path(path).exists():
         files[name] = pathlib.Path(path).read_text()
 payload = base64.b64encode(json.dumps({'status': int(sys.argv[1]), 'files': files}).encode()).decode()
@@ -113,6 +156,8 @@ RESULT
 systemctl disable tripwire-phase0.service
 systemctl poweroff
 '''
+    guest_script = guest_script.replace('"PHASE3" = "true"',
+                                        f'"{str(options.phase3).lower()}" = "true"')
     unit = '[Unit]\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nExecStart=/root/accept.sh\nTimeoutStartSec=infinity\n[Install]\nWantedBy=multi-user.target\n'
     # JSON is valid YAML; avoid a host PyYAML dependency.
     config = {'package_update': False, 'package_upgrade': False,
@@ -131,8 +176,8 @@ systemctl poweroff
     (seed / 'user-data').write_text('#cloud-config\n' + json.dumps(config).replace('PORT', str(port)))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(base_disk), str(overlay), '12G'])
-    qemu_args = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', '2048',
+    command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(base_disk), str(overlay), f'{disk_gib}G'])
+    qemu_args = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', str(memory_mib),
             '-drive', f'file={overlay},if=virtio,format=qcow2', '-display', 'none',
             '-serial', f'file:{VM / "serial.log"}', '-monitor', 'none',
             '-netdev', 'user,id=net0', '-device', 'virtio-net-pci,netdev=net0',
@@ -142,18 +187,20 @@ systemctl poweroff
                   'base_guest_disk': str(base_disk) if options.base_guest else None,
                   'base_guest_provenance': str(VM / 'provenance.json') if options.base_guest else None,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
+                  'memory_mib': memory_mib, 'disk_gib': disk_gib,
+                  'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,
                   'qemu_arguments': qemu_args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
     (VM / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
     try:
         with (VM / 'qemu.log').open('w') as log:
             proc = subprocess.Popen(qemu_args, stdout=log, stderr=log)
             try:
-                deadline = time.monotonic() + 1800
+                deadline = time.monotonic() + options.timeout_seconds
                 while proc.poll() is None:
                     if shutil.disk_usage(VM).free < 2 * 1024**3:
                         raise RuntimeError('less than 2 GiB disk space remains; stopping guest')
                     if time.monotonic() > deadline:
-                        raise RuntimeError('guest exceeded 30 minute limit')
+                        raise RuntimeError(f'guest exceeded {options.timeout_seconds} second limit')
                     time.sleep(2)
                 if proc.returncode:
                     raise RuntimeError(f'QEMU exit {proc.returncode}; see data/vm/qemu.log')
