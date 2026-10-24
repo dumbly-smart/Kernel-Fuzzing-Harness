@@ -1,14 +1,26 @@
 # Tripwire
 
 Research project for an eBPF behavioral monitor of tool-using LLM agents and an
-adaptive attacker against that monitor. Phases 0–2 and the Phase 3 local agent,
-benign corpus, and Phase 4 detector baselines are implemented. Injection,
-adaptive attacker, taxonomy, and final research measurements are in progress.
+adaptive attacker against that monitor. The Phase 0–8 implementation, local
+injection harness, mimicry probe, detector baselines, ablations, taxonomy
+reporter, and paper skeleton are present. The measured benign corpus and
+attack-evaluation tables remain pending because the current development host
+could not safely complete the model guest.
 
 All experiments belong in a throwaway guest you control, using fake secrets and
 local sinks. Never mount host home directories or pass through host credentials.
 
 ## Reproduce the environment
+
+For a fresh end-to-end run from a launcher with QEMU/KVM, run
+`bash scripts/reproduce.sh`. It creates isolated disks for the baseline,
+benign corpus, injections, mimicry, and final evaluation. The default uses the
+pinned Qwen3 8B profile with an 8 GiB guest and requires at least twice the
+guest RAM free on the launcher under its conservative headroom rule. You may
+set `MODEL_CONFIG=config/model.tiny.json GUEST_MEMORY_MIB=2048` to select the
+documented 0.6B fallback explicitly; record that model as a utility confound.
+The script refuses to overwrite existing guest disks and preserves all
+artifacts under ignored `data/vm/`.
 
 For an automated QEMU run using existing host tools, see
 [the disposable VM recipe](docs/notes/phase0-qemu.md). Add --base-guest to
@@ -193,6 +205,16 @@ taxonomy evidence, and an SVG under `data/injection-corpus/`. The combined
 score rule and feature groups are explicit in `config/ablations.json`. Cases
 without successful goals or calibrated verdicts remain pending; see
 [the taxonomy rules](docs/taxonomy.md) and [Phase 7 notes](docs/notes/phase7.md).
+
+## Phase 8 release and writeup
+
+The repository uses the [MIT License](LICENSE). The one-command reproduction
+entrypoint is `bash scripts/reproduce.sh`; it uses separate VM overlays and
+stops on the first failed phase. The paper skeleton is
+[docs/paper/WORKSHOP_DRAFT.md](docs/paper/WORKSHOP_DRAFT.md). It contains
+verified related-work links, `TODO(verify)` citation checks, and
+`TODO(measure)` placeholders. Current VM resource failures and unmeasured
+results are summarized in [Phase 8 notes](docs/notes/phase8.md).
 
 
 ## Phase 0 acceptance
