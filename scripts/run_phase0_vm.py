@@ -88,11 +88,20 @@ def main():
                         help="maximum guest run time (default: 1800)")
     parser.add_argument("--phase3", action="store_true",
                         help="install the pinned local model and run all benign corpus seeds")
+    parser.add_argument("--phase3-model-config", default="config/model.json",
+                        help="profile used by Phase 3 (paired model lock selected automatically)")
     options = parser.parse_args()
     memory_mib, disk_gib = validate_vm_resources(options.memory_mib, options.disk_gib)
     reuse_provisioned_base = validate_guest_mode(
         base_guest=options.base_guest,
         reuse_provisioned_base=options.reuse_provisioned_base)
+    phase3_model_config = Path(options.phase3_model_config)
+    if (phase3_model_config.is_absolute() or phase3_model_config.parent != Path("config") or
+            phase3_model_config.suffix != ".json" or
+            not (ROOT / phase3_model_config).is_file()):
+        parser.error("phase3-model-config must be an existing config/*.json path")
+    phase3_model_lock = phase3_model_config.with_name(
+        f"{phase3_model_config.stem}.lock.json")
     if isinstance(options.timeout_seconds, bool) or options.timeout_seconds <= 0:
         parser.error("timeout-seconds must be a positive integer")
     image_hash = verify_image()
@@ -147,11 +156,11 @@ if [ "$status" -eq 0 ]; then
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
-    bash /opt/tripwire/scripts/install_local_model.sh --record-lock > /root/model-install.log 2>&1
+    bash /opt/tripwire/scripts/install_local_model.sh --record-lock --model-config "PHASE3_MODEL_CONFIG" > /root/model-install.log 2>&1
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
-    RUN_DIR=/opt/tripwire/data/phase3-corpus bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
+    MODEL_CONFIG=/opt/tripwire/PHASE3_MODEL_CONFIG RUN_DIR=/opt/tripwire/data/phase3-corpus bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
     status=$?
 fi
 python3 - "$status" <<'RESULT'
@@ -168,6 +177,7 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'environment.lock.json': '/opt/tripwire/config/environment.lock.json',
                    'model-install.log': '/root/model-install.log',
                    'model.lock.json': '/opt/tripwire/config/model.lock.json',
+                   'phase3-model-lock.json': '/opt/tripwire/PHASE3_MODEL_LOCK',
                    'phase3-corpus.log': '/root/phase3-corpus.log',
                    'phase3-manifest.json': '/opt/tripwire/data/phase3-corpus/manifest.json',
                    'phase3-summary.json': '/opt/tripwire/data/phase3-corpus/corpus-summary.json',
@@ -191,6 +201,8 @@ systemctl poweroff
         '"REUSE_PROVISIONED"', f'"{str(reuse_provisioned_base).lower()}"')
     guest_script = guest_script.replace('"PHASE3" = "true"',
                                         f'"{str(options.phase3).lower()}" = "true"')
+    guest_script = guest_script.replace('PHASE3_MODEL_CONFIG', str(phase3_model_config))
+    guest_script = guest_script.replace('PHASE3_MODEL_LOCK', str(phase3_model_lock))
     unit = '[Unit]\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nExecStart=/root/accept.sh\nTimeoutStartSec=infinity\n[Install]\nWantedBy=multi-user.target\n'
     # JSON is valid YAML; avoid a host PyYAML dependency.
     config = {'package_update': False, 'package_upgrade': False,
@@ -260,6 +272,8 @@ systemctl poweroff
                  'environment.lock.json'):
         if name in result['files']:
             (VM / name).write_text(result['files'][name])
+    if 'phase3-model-lock.json' in result['files']:
+        (ROOT / phase3_model_lock).write_text(result['files']['phase3-model-lock.json'])
     print(f"Guest acceptance exit: {result['status']}; artifacts: {VM}", flush=True)
     raise SystemExit(result['status'])
 

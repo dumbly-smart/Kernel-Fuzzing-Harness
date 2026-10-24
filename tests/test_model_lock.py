@@ -1,6 +1,8 @@
 import unittest
 
-from tripwire.model_lock import validate_model_lock
+from pathlib import Path
+
+from tripwire.model_lock import model_lock_path, validate_model_lock
 
 
 CONFIG = {
@@ -17,6 +19,16 @@ LOCK = {
 
 
 class ModelLockTests(unittest.TestCase):
+    def test_model_lock_path_matches_profile_name(self):
+        self.assertEqual(
+            model_lock_path(Path("config/model.json")),
+            Path("config/model.lock.json"),
+        )
+        self.assertEqual(
+            model_lock_path(Path("config/model.low-memory.json")),
+            Path("config/model.low-memory.lock.json"),
+        )
+
     def test_accepts_matching_archive_model_and_manifest_pin(self):
         self.assertEqual(validate_model_lock(CONFIG, LOCK), LOCK)
 

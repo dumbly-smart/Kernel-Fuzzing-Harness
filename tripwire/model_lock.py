@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _LAYER_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
+def model_lock_path(config_path: Path) -> Path:
+    """Keep each alternative model profile paired with its own digest lock."""
+    config_path = Path(config_path)
+    if config_path.suffix != ".json":
+        raise ValueError("model config path must end in .json")
+    return config_path.with_name(f"{config_path.stem}.lock.json")
 
 
 def validate_model_lock(config: dict[str, Any], lock: Any) -> dict[str, Any]:

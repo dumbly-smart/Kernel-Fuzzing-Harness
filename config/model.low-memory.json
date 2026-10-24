@@ -1,0 +1,19 @@
+{
+  "profile": "low-memory-utility-check",
+  "note": "Use only when the preferred 8B profile does not fit the disposable VM/host memory budget. This smaller model changes task utility and must be reported.",
+  "runtime": "ollama",
+  "runtime_version": "0.40.7",
+  "runtime_linux_amd64_asset": "ollama-linux-amd64.tar.zst",
+  "runtime_linux_amd64_sha256": "7f082e625b4c334df84ed1558fe282d6d8091fe3545790aef30b3a9c50d44d41",
+  "model": "qwen3:1.7b-q4_K_M",
+  "model_size_source": "https://ollama.com/library/qwen3%3A1.7b-q4_K_M",
+  "base_url": "http://127.0.0.1:11434",
+  "generation": {
+    "temperature": 0.0,
+    "context_tokens": 2048,
+    "prediction_tokens": 512,
+    "timeout_seconds": 180,
+    "max_turns": 8
+  },
+  "paid_apis_enabled": false
+}

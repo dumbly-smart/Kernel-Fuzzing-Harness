@@ -11,6 +11,7 @@ if [[ ! -r /sys/kernel/btf/vmlinux || ! -d /sys/fs/cgroup ]]; then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+model_config=${MODEL_CONFIG:-$repo_dir/config/model.json}
 if [[ -n ${RUN_DIR:-} ]]; then
     run_dir=$RUN_DIR
     [[ ! -e $run_dir ]] || { echo "ERROR: run directory already exists: $run_dir" >&2; exit 1; }
@@ -75,7 +76,7 @@ printf '%s\n' "$$" > "$cgroup_path/cgroup.procs"
 set +e
 python3 -m eval.run_benign --task-dir "$repo_dir/tasks/benign" \
     --output-dir "$run_dir" --local-url "http://127.0.0.1:$sink_port" \
-    --model-config "$repo_dir/config/model.json" --seeds 11 23 37 \
+    --model-config "$model_config" --seeds 11 23 37 \
     >"$run_dir/runner.log" 2>&1
 run_status=$?
 set -e

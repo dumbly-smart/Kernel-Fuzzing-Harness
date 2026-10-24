@@ -4,9 +4,20 @@ trap 'printf "ERROR: install_local_model.sh line %s: %s (exit %s)\n" "$LINENO" "
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 record_lock=0
-if [[ ${1:-} == --record-lock && $# == 1 ]]; then record_lock=1
-elif [[ $# -ne 0 ]]; then echo 'Usage: sudo bash scripts/install_local_model.sh [--record-lock]' >&2; exit 2
-fi
+model_config=config/model.json
+while (($#)); do
+    case "$1" in
+        --record-lock) record_lock=1; shift ;;
+        --model-config)
+            (($# >= 2)) || { echo 'ERROR: --model-config requires a path' >&2; exit 2; }
+            model_config=$2; shift 2 ;;
+        *) echo 'Usage: sudo bash scripts/install_local_model.sh [--record-lock] [--model-config config/model.json]' >&2; exit 2 ;;
+    esac
+done
+[[ $model_config == config/*.json && -f "$repo_dir/$model_config" ]] || {
+    echo "ERROR: model config must name an existing config/*.json file: $model_config" >&2
+    exit 2
+}
 if [[ ${EUID} -ne 0 ]] || ! systemd-detect-virt --quiet; then
     echo 'ERROR: local model installation requires root inside the disposable VM' >&2
     exit 1
@@ -15,7 +26,7 @@ source /etc/os-release
 [[ $ID == ubuntu && $VERSION_ID == 24.04 ]] || { echo 'ERROR: Ubuntu 24.04 required' >&2; exit 1; }
 [[ $(dpkg --print-architecture) == amd64 ]] || { echo 'ERROR: amd64 required' >&2; exit 1; }
 
-mapfile -t model_settings < <(python3 - "$repo_dir/config/model.json" <<'PY'
+mapfile -t model_settings < <(python3 - "$repo_dir/$model_config" <<'PY'
 import json
 import sys
 config = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -29,6 +40,10 @@ runtime_version=${model_settings[0]}
 archive_asset=${model_settings[1]}
 archive_sha256=${model_settings[2]}
 model_tag=${model_settings[3]}
+[[ $model_tag =~ ^[A-Za-z0-9._/-]+:[A-Za-z0-9._-]+$ && $model_tag != *..* ]] || {
+    echo "ERROR: unsupported unsafe Ollama model tag: $model_tag" >&2
+    exit 1
+}
 archive_url="https://github.com/ollama/ollama/releases/download/v${runtime_version}/${archive_asset}"
 cache_dir=/var/cache/tripwire
 archive="$cache_dir/ollama-linux-amd64-v${runtime_version}.tar.zst"
@@ -85,7 +100,7 @@ version=$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["versi
 }
 sudo -u ubuntu env OLLAMA_HOST=127.0.0.1:11434 /usr/local/bin/ollama pull "$model_tag"
 
-manifest=/var/lib/tripwire-ollama/manifests/registry.ollama.ai/library/qwen3/8b-q4_K_M
+manifest="/var/lib/tripwire-ollama/manifests/registry.ollama.ai/library/${model_tag/:/\/}"
 [[ -s $manifest ]] || {
     echo "ERROR: Ollama model manifest missing at $manifest" >&2
     exit 1
@@ -111,7 +126,14 @@ lock = {
 }
 Path(output).write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
-lock_path="$repo_dir/config/model.lock.json"
+lock_name=$(python3 - "$model_config" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+print(p.with_name(f"{p.stem}.lock.json"))
+PY
+)
+lock_path="$repo_dir/$lock_name"
 if (( record_lock )); then
     install -m 0644 "$actual_lock" "$lock_path"
     echo "Recorded local model lock: $lock_path"

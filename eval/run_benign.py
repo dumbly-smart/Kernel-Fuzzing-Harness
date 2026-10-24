@@ -13,7 +13,7 @@ from agent.call_log import ToolCallLogger
 from agent.react import DEFAULT_MODEL, OllamaClient, ReActAgent
 from agent.tools import AgentTools
 from tripwire.corpus import check_success, load_corpus, prepare_task_for_run
-from tripwire.model_lock import validate_model_lock
+from tripwire.model_lock import model_lock_path, validate_model_lock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,13 +113,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--local-url", required=True,
                         help="generated loopback fixture server origin")
     parser.add_argument("--model-config", type=Path, default=ROOT / "config/model.json")
+    parser.add_argument("--model-lock", type=Path, default=None,
+                        help="defaults to the lock file paired with --model-config")
     parser.add_argument("--seeds", type=int, nargs="+", default=[11, 23, 37])
     args = parser.parse_args(argv)
     if not args.seeds or len(args.seeds) != len(set(args.seeds)):
         parser.error("seeds must be a non-empty list of unique integers")
     try:
         model_config = json.loads(args.model_config.read_text(encoding="utf-8"))
-        model_lock = json.loads((ROOT / "config/model.lock.json").read_text(encoding="utf-8"))
+        lock_path = args.model_lock or model_lock_path(args.model_config)
+        model_lock = json.loads(lock_path.read_text(encoding="utf-8"))
         run_corpus(task_dir=args.task_dir, output_dir=args.output_dir,
                    seeds=args.seeds, local_url=args.local_url,
                    model_config=model_config, model_lock=model_lock)
