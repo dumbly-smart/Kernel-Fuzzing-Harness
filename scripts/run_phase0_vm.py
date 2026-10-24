@@ -63,6 +63,34 @@ def validate_vm_resources(memory_mib, disk_gib):
     return memory_mib, disk_gib
 
 
+def validate_host_memory_headroom(memory_mib, available_mib, multiplier=2):
+    values = (memory_mib, available_mib, multiplier)
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in values):
+        raise ValueError("host memory headroom values must be integers")
+    if memory_mib < 1 or available_mib < 0 or multiplier < 1:
+        raise ValueError("host memory headroom values must be positive (available memory may be zero)")
+    required_mib = memory_mib * multiplier
+    if available_mib < required_mib:
+        raise ValueError(
+            f"MemAvailable={available_mib} MiB; need at least {required_mib} MiB "
+            f"({multiplier}x guest RAM)")
+    return required_mib
+
+
+def read_memavailable_mib(meminfo_path=Path('/proc/meminfo')):
+    try:
+        lines = meminfo_path.read_text().splitlines()
+    except OSError as error:
+        raise RuntimeError(f"cannot read host memory information: {error}") from error
+    for line in lines:
+        fields = line.split()
+        if fields and fields[0] == 'MemAvailable:':
+            if len(fields) != 3 or fields[2] != 'kB' or not fields[1].isdigit():
+                raise RuntimeError(f"invalid MemAvailable entry in {meminfo_path}")
+            return int(fields[1]) // 1024
+    raise RuntimeError(f"MemAvailable entry missing from {meminfo_path}")
+
+
 def validate_guest_mode(*, base_guest, base_disk_name, reuse_provisioned_base):
     if reuse_provisioned_base and not (base_guest or base_disk_name):
         raise ValueError("reuse-provisioned-base requires a base disk")
@@ -100,6 +128,12 @@ def main():
                         help="profile used by Phase 5 in an already provisioned guest")
     options = parser.parse_args()
     memory_mib, disk_gib = validate_vm_resources(options.memory_mib, options.disk_gib)
+    # Match reproduce.sh's conservative host-side policy even when this runner
+    # is invoked directly. It is a safety heuristic, not a model-fit guarantee.
+    try:
+        validate_host_memory_headroom(memory_mib, read_memavailable_mib())
+    except (RuntimeError, ValueError) as error:
+        parser.error(f"refusing VM launch: {error}")
     reuse_provisioned_base = validate_guest_mode(
         base_guest=options.base_guest,
         base_disk_name=options.base_disk_name,

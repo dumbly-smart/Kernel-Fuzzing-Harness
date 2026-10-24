@@ -19,6 +19,9 @@ pinned Qwen3 8B profile with an 8 GiB guest and requires at least twice the
 guest RAM free on the launcher under its conservative headroom rule. You may
 set `MODEL_CONFIG=config/model.tiny.json GUEST_MEMORY_MIB=2048` to select the
 documented 0.6B fallback explicitly; record that model as a utility confound.
+Both this script and direct calls to `scripts/run_phase0_vm.py` require
+`MemAvailable` to be at least twice the selected guest RAM. This is a
+conservative launch heuristic, not a guarantee that a model will fit.
 The script refuses to overwrite existing guest disks and preserves all
 artifacts under ignored `data/vm/`.
 

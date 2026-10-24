@@ -13,6 +13,34 @@ spec.loader.exec_module(vm)
 
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_direct_runner_requires_twice_guest_memory_before_launch(self):
+        self.assertEqual(vm.validate_host_memory_headroom(2048, 4096), 4096)
+        self.assertEqual(vm.validate_host_memory_headroom(2048, 5000), 4096)
+        with self.assertRaisesRegex(
+                ValueError,
+                r'MemAvailable=4095 MiB; need at least 4096 MiB \(2x guest RAM\)'):
+            vm.validate_host_memory_headroom(2048, 4095)
+
+    def test_direct_runner_rejects_invalid_headroom_values(self):
+        for guest, available, multiplier in (
+                (True, 4096, 2), (2048, False, 2), (2048, 4096, True),
+                (0, 4096, 2), (2048, -1, 2), (2048, 4096, 0)):
+            with self.subTest(guest=guest, available=available, multiplier=multiplier):
+                with self.assertRaises(ValueError):
+                    vm.validate_host_memory_headroom(guest, available, multiplier)
+
+    def test_memavailable_parser_reads_mib_and_reports_missing_or_malformed_value(self):
+        with tempfile.TemporaryDirectory() as directory:
+            meminfo = Path(directory) / 'meminfo'
+            meminfo.write_text('MemTotal: 16384000 kB\nMemAvailable: 5120000 kB\n')
+            self.assertEqual(vm.read_memavailable_mib(meminfo), 5000)
+            meminfo.write_text('MemTotal: 16384000 kB\n')
+            with self.assertRaisesRegex(RuntimeError, 'MemAvailable entry missing'):
+                vm.read_memavailable_mib(meminfo)
+            meminfo.write_text('MemAvailable: unknown kB\n')
+            with self.assertRaisesRegex(RuntimeError, 'invalid MemAvailable entry'):
+                vm.read_memavailable_mib(meminfo)
+
     def test_vm_resource_limits_accept_model_guest_size(self):
         self.assertEqual(vm.validate_vm_resources(6144, 32), (6144, 32))
 

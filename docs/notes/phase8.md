@@ -9,7 +9,8 @@
 - The launcher accepts `GUEST_MEMORY_MIB`, `GUEST_DISK_GIB`, and
   `GUEST_TIMEOUT_SECONDS`. Its 2x memory rule is a local safety heuristic, not
   a guarantee of model fit; available-memory and VM sizing remain recorded in
-  the QEMU provenance.
+  the QEMU provenance. The direct Python VM runner enforces the same rule, so
+  bypassing `scripts/reproduce.sh` does not skip the check.
 - `LICENSE` uses the MIT License. No AgentSight, Tetragon, or AgentDojo source
   code was copied into Tripwire.
 - `docs/paper/WORKSHOP_DRAFT.md` is the workshop paper skeleton. Verified
