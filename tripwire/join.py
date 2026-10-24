@@ -155,11 +155,14 @@ def _read_calls(path: Path) -> list[dict[str, Any]]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    config_path = Path(__file__).resolve().parents[1] / "config/tripwire.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     parser.add_argument("--events", required=True, type=Path)
     parser.add_argument("--calls", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
-    parser.add_argument("--late-event-grace-ms", type=float, default=250.0)
+    parser.add_argument("--late-event-grace-ms", type=float,
+                        default=config["late_event_grace_ms"])
     args = parser.parse_args(argv)
     try:
         with args.events.open(encoding="utf-8") as stream:
