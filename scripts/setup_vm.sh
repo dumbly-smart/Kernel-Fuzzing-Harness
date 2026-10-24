@@ -45,3 +45,6 @@ fi
 cd -- "$repo_dir"
 python3 scripts/check_env.py --record
 make check
+# `make check` creates CO-RE build outputs as root; the documented acceptance
+# tests run as ubuntu and rebuild the BPF skeleton, so hand those outputs over.
+chown -R ubuntu:ubuntu "$repo_dir/build"

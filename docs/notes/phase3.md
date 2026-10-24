@@ -43,6 +43,13 @@ next attempt uses a 4 GiB guest allocation to preserve host headroom. If the
 8B model cannot load there, its concrete Ollama error and all 90 run outcomes
 will be retained rather than silently changing the model.
 
+A 4 GiB prepared-base attempt successfully reran environment discovery, then
+failed its unprivileged BPF rebuild with `mkdir: cannot create directory
+'../build': Permission denied`. The accepted base contained root-owned build
+outputs from the setup step. Setup and the guest harness now transfer `build/`
+to `ubuntu` before its check/test run. This attempt did not reach model
+installation.
+
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
 
 ## Acceptance
