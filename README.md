@@ -93,6 +93,16 @@ reviewable trace sample is at [data/samples/phase1-smoke.jsonl](data/samples/pha
 See [Phase 1 learning and limits](docs/notes/phase1.md) and the
 [guest acceptance record](docs/notes/phase1-guest-acceptance.txt).
 
+## Phase 2 tool-call correlation
+
+The minimal deterministic driver exposes workspace file tools, Bash, and
+loopback-only HTTP. Call records include monotonic time, process IDs and cgroup
+ID. `python3 -m tripwire.join` joins those records to the trace using process
+fork ancestry, a configurable late-event grace, and an explicit ambiguous/orphan
+report. Run `sudo make smoke-agent-join` in the disposable guest to exercise
+ten tasks against a guest-local sink. The measured results and join limits are
+in [Phase 2 notes](docs/notes/phase2.md).
+
 
 ## Phase 0 acceptance
 

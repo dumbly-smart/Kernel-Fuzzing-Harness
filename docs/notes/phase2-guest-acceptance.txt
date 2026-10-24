@@ -1,0 +1,33 @@
+Tripwire Phase 2 tool-call correlation acceptance
+Date: 2026-10-24
+Guest: disposable Ubuntu 24.04 amd64 QEMU/KVM overlay; kernel 6.8.0-146-generic.
+Source commit tested: fdf5bf8 (tracer cadence fix and Phase 2 harness).
+
+The guest runner completed setup and its idempotence re-run, `make check`,
+`make test`, the Phase 1 BPF smoke, and `scripts/smoke_agent_join.sh` with exit 0.
+`make test` ran 43 tests. All ten deterministic tasks succeeded; 11 tool calls
+were recorded and all 11 were rendered with one or more joined events.
+
+Observed join report:
+  event_count: 2209
+  assigned_events: 428
+  orphan_events: 1781
+  orphan_event_rate: 0.8062471706654595
+  ambiguous_events: 0
+  late_event_grace_ms: 250.0
+
+Orphan cause counts by event comm/type:
+  python3: 1700 events (1681 syscall, 14 fork, 5 exit)
+  bash: 47 events (43 syscall, 3 fork, 1 exit)
+  sleep: 31 events (30 syscall, 1 exit)
+  tripwire-loader stats: 3 events
+
+The three collector stats records reported zero ring-buffer drops, a 16 MiB
+ring, and a 1,000 ms cadence. Both HTTP calls went only to a listener bound to
+127.0.0.1 inside the guest. No external model/API or destination was used.
+
+The first run's `phase2-08` shell call was initially ambiguous because its
+process was the exact PID of that call and a descendant of the prior call's
+process within the prior 250 ms grace. Shortest-ancestry selection resolved it;
+the next guest run reported zero ambiguous calls and every call had events.
+The raw guest outputs remain ignored under `data/vm/`.

@@ -52,14 +52,24 @@ evidence.
 ## Phase 1 tracer acceptance — 2026-10-24
 
 The accepted baseline disk was reused read-only behind a fresh disposable
-overlay. Setup idempotence, `make check`, 27 Python tests, BPF compilation,
+overlay. Setup idempotence, `make check`, 43 Python tests, BPF compilation,
 libbpf loading/tracepoint attachment and the root-only smoke all passed on the
-same pinned environment above. The final smoke emitted 391 records with zero
+same pinned environment above. The final cadence-checked smoke emitted 229 records with zero
 reported ring-buffer drops. Configuration was 16 MiB ring buffer, 256-byte path
 fields and 1000 ms stats polling. Summary and exact guest record:
 [phase1-guest-acceptance.txt](notes/phase1-guest-acceptance.txt). The sample
 JSONL is in `data/samples/phase1-smoke.jsonl`; raw overlays and run artifacts
 remain ignored under `data/vm/`.
+
+## Phase 2 correlation acceptance — 2026-10-24
+
+The same disposable baseline and tool pins passed `make check`, 43 Python tests,
+the BPF smoke and the ten-task tool-call join smoke. All 11 logged tool calls
+were joined to one or more events. The join report counted 428 assigned, 1,781
+orphaned (80.62%) and zero ambiguous events out of 2,209 records. Most orphans
+were interpreter startup syscalls outside call windows; the cause breakdown and
+limits are recorded in [Phase 2 notes](notes/phase2.md). `late_event_grace_ms`
+is 250 in `config/tripwire.json`; collector poll/stats cadence is 1,000 ms.
 
 Snapshot sources are temporary and isolated from guest sources and indexes;
 signature verification stays enabled. Check-Valid-Until is disabled only for

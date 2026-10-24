@@ -7,7 +7,7 @@ clang: Ubuntu clang 18.1.3 (1ubuntu1)
 libbpf pkg-config: 1.3.0
 bpftool: 7.4.0 (bpftool build reports libbpf 1.4)
 Python: 3.12.3; Make: 4.3
-Source commit tested: fc9e879
+Source commit tested: fdf5bf8 (final cadence fix; later Phase 2 additions were present)
 
 Guest command sequence:
   setup_vm.sh --disposable-guest (idempotence re-run)
@@ -16,13 +16,13 @@ Guest command sequence:
 
 Result: exit 0. The BPF object compiled with clang-18; bpftool generated the
 CO-RE skeleton; the libbpf loader compiled and loaded/attached the programs;
-all 27 Python tests passed; the smoke script passed.
+all 43 Python tests passed; the smoke script passed.
 
 Smoke result (from smoke.log):
   {"dropped_events": 0, "event_types": {"process_exit": 6,
-  "process_fork": 5, "stats": 164, "syscall": 216}, "events": 391,
+  "process_fork": 5, "stats": 2, "syscall": 216}, "events": 229,
   "path_bytes": 256, "poll_interval_ms": 1000,
-  "ring_buffer_bytes": 16777216, "sequence_last": 391,
+  "ring_buffer_bytes": 16777216, "sequence_last": 229,
   "syscalls": {"clone": 5, "connect": 3, "execve": 6, "openat": 192,
   "renameat2": 1, "sendto": 1, "unlinkat": 1, "write": 7}}
 
@@ -38,3 +38,10 @@ test before the final accepted run. The first loader build also lacked the
 <bpf/bpf.h> declaration for bpf_map_lookup_elem; the final build passed after
 including it. Earlier failed attempts are evidence of development, not the
 final acceptance result.
+
+The Phase 2 trace exposed that stats were emitted after every ring-buffer poll
+return, including early returns caused by new data. The loader now checks the
+configured monotonic deadline before periodic stats emission and emits a final
+record on shutdown. The final cadence check passed with two stats records in
+the short Phase 1 smoke; a regression guard rejects output substantially above
+the configured interval.

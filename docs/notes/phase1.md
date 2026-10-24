@@ -62,9 +62,9 @@ another.
 See [the guest acceptance record](phase1-guest-acceptance.txt) and the committed
 [sample JSONL trace](../../data/samples/phase1-smoke.jsonl). On the pinned Ubuntu
 24.04 amd64 guest (kernel `6.8.0-146-generic`, clang 18.1.3, libbpf 1.3.0,
-bpftool 7.4.0), `make check` and 27 Python tests passed. The root-only smoke
-captured 391 ordered records: 216 syscall records, 5 fork records, 6 exit
-records and 164 stats records. It saw `execve`, `openat`, `connect`, `sendto`,
+bpftool 7.4.0), `make check` and 43 Python tests passed. The root-only smoke
+captured 229 ordered records: 216 syscall records, 5 fork records, 6 exit
+records and 2 stats records. It saw `execve`, `openat`, `connect`, `sendto`,
 `write`, `renameat2` and `unlinkat`; the failed `openat` returned `-2`. The
 final reported drop count was 0 with a 16 MiB ring, 256-byte paths and a 1 s
 poll interval. All test network traffic used a temporary listener on guest

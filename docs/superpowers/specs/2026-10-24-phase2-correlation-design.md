@@ -32,17 +32,20 @@ work.
 2. An event is a candidate for call C when `call.start <= event.monotonic <=
    call.end + late_event_grace_ms`, event cgroup IDs match, and the event PID is
    the recorded tool PID or a descendant reachable through fork edges.
-3. When exactly one call matches, attach the event there. When more than one
-   distinct call matches (for example, overlapping inline calls in one PID),
-   mark the event ambiguous and do not guess. With no match, count it as an
-   orphan. A single event is never duplicated across calls.
+3. Prefer the matching call with the shortest PID ancestry distance from the
+   event process to the call's tool PID. This resolves a child tool process more
+   specifically than a prior call whose grace window still includes it. If
+   multiple calls tie at that shortest distance (for example, overlapping
+   inline calls in one PID), mark the event ambiguous and do not guess. With no
+   match, count it as an orphan. A single event is never duplicated across calls.
 4. The grace interval is a config value and captures short-lived events from a
    tool's child process after the wrapper returns. Events beyond the grace
    interval are orphaned. A call whose process exits before a late kernel event
    can still match through its PID and fork ancestry.
 5. PID reuse within one trace can make ancestry ambiguous. The implementation
-   will constrain ancestry to fork timestamps at or before the event and report
-   multiple matches as ambiguous; a future run identity can strengthen this.
+   constrains ancestry to fork timestamps at or before the event; ties at the
+   shortest ancestry distance are reported as ambiguous. A future run identity
+   can strengthen this.
 
 ## Safety and limits
 
