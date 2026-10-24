@@ -54,7 +54,10 @@ def parse_event(line: str) -> dict[str, Any]:
             # openat-style syscalls use -100 (AT_FDCWD) when paths are relative
             # to the process working directory instead of an explicit fd.
             _integer(event, "dirfd", minimum=-100)
-        for key in ("fd", "byte_count", "family", "port"):
+        if "fd" in event and event["fd"] is not None:
+            # Invalid syscall arguments such as fd=-1 are still useful evidence.
+            _integer(event, "fd", minimum=-(1 << 31))
+        for key in ("byte_count", "family", "port"):
             if key in event and event[key] is not None:
                 _integer(event, key)
     elif event_type == "process_fork":

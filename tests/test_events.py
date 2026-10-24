@@ -35,6 +35,12 @@ class ParseEventTests(unittest.TestCase):
 
         self.assertEqual(parse_event(json.dumps(event))["dirfd"], -100)
 
+    def test_parses_negative_fd_argument(self):
+        event = common("syscall")
+        event.update(syscall="write", return_code=-9, fd=-1)
+
+        self.assertEqual(parse_event(json.dumps(event))["fd"], -1)
+
     def test_parses_process_fork(self):
         event = common("process_fork")
         event.update(child_pid=43, child_tgid=43)
