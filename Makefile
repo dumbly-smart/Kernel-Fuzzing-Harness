@@ -1,7 +1,7 @@
 .PHONY: check bpf smoke-agent-join smoke-benign-corpus smoke-injections smoke-mimicry eval-detectors eval-ablations eval-taxonomy eval-all
 check:
 	bash -n scripts/setup_vm.sh scripts/smoke_bpf.sh scripts/smoke_agent_join.sh scripts/smoke_benign_corpus.sh scripts/smoke_injections.sh scripts/smoke_mimicry.sh scripts/reproduce.sh
-	python3 -m py_compile scripts/run_phase0_vm.py attacker/mimicry.py eval/run_detectors.py eval/run_injections.py eval/finalize_injections.py eval/run_ablations.py eval/run_taxonomy.py eval/plot_ablations.py
+	PYTHONPYCACHEPREFIX="$${TMPDIR:-/tmp}/tripwire-pycache-$$(id -u)" python3 -m py_compile scripts/run_phase0_vm.py attacker/mimicry.py eval/run_detectors.py eval/run_injections.py eval/finalize_injections.py eval/run_ablations.py eval/run_taxonomy.py eval/plot_ablations.py
 	python3 scripts/check_env.py
 	$(MAKE) bpf
 

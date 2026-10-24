@@ -15,6 +15,14 @@ spec.loader.exec_module(vm)
 
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_make_check_scopes_python_bytecode_cache_by_user(self):
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            ["make", "-n", "check"], cwd=root, check=True,
+            capture_output=True, text=True)
+
+        self.assertRegex(result.stdout, r"PYTHONPYCACHEPREFIX=.*id -u")
+
     def test_decodes_chunked_guest_result_with_interleaved_console_output(self):
         result = {"status": 2, "files": {"phase3.log": "x" * 30000}}
         payload = base64.b64encode(json.dumps(result).encode()).decode()
