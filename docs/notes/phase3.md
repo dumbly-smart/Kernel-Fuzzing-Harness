@@ -84,6 +84,15 @@ model execution.
 
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
 
+A later retry used a fresh overlay and passed the repository ownership check,
+but host `MemAvailable` fell below the launch policy during the run (2,762 MiB
+available for a 2,048 MiB guest, with 4,096 MiB required). I terminated that
+QEMU process before host memory fell further. The runner then reported
+`RuntimeError: guest returned no result; see data/vm/serial.log`; no model or
+corpus outcome was recovered. The runner now rechecks the same 2x headroom
+policy every two seconds while QEMU is active and stops the guest if it falls
+below the threshold.
+
 ## Acceptance
 
 Pending a fresh guest run. Keep the exact model manifest digest, 90 task

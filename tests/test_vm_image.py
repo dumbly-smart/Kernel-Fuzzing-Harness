@@ -63,6 +63,24 @@ class ImageVerificationTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     vm.validate_host_memory_headroom(guest, available, multiplier)
 
+    def test_runtime_headroom_check_stops_when_available_memory_drops(self):
+        with tempfile.TemporaryDirectory() as directory:
+            meminfo = Path(directory) / "meminfo"
+            meminfo.write_text("MemAvailable: 3000000 kB\n")
+
+            with self.assertRaisesRegex(
+                    RuntimeError,
+                    r"host memory headroom fell below 4096 MiB during guest run; "
+                    r"MemAvailable=2929 MiB"):
+                vm.enforce_runtime_host_headroom(2048, meminfo)
+
+    def test_runtime_headroom_check_allows_guest_when_memory_is_sufficient(self):
+        with tempfile.TemporaryDirectory() as directory:
+            meminfo = Path(directory) / "meminfo"
+            meminfo.write_text("MemAvailable: 5120000 kB\n")
+
+            self.assertEqual(vm.enforce_runtime_host_headroom(2048, meminfo), 5000)
+
     def test_memavailable_parser_reads_mib_and_reports_missing_or_malformed_value(self):
         with tempfile.TemporaryDirectory() as directory:
             meminfo = Path(directory) / 'meminfo'

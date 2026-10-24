@@ -94,6 +94,18 @@ def read_memavailable_mib(meminfo_path=Path('/proc/meminfo')):
     raise RuntimeError(f"MemAvailable entry missing from {meminfo_path}")
 
 
+def enforce_runtime_host_headroom(memory_mib, meminfo_path=Path('/proc/meminfo')):
+    available_mib = read_memavailable_mib(meminfo_path)
+    required_mib = memory_mib * 2
+    try:
+        validate_host_memory_headroom(memory_mib, available_mib)
+    except ValueError as error:
+        raise RuntimeError(
+            f"host memory headroom fell below {required_mib} MiB during guest run; "
+            f"{error}") from error
+    return available_mib
+
+
 def validate_guest_mode(*, base_guest, base_disk_name, reuse_provisioned_base):
     if reuse_provisioned_base and not (base_guest or base_disk_name):
         raise ValueError("reuse-provisioned-base requires a base disk")
@@ -427,6 +439,7 @@ systemctl poweroff
                 while proc.poll() is None:
                     if shutil.disk_usage(VM).free < 2 * 1024**3:
                         raise RuntimeError('less than 2 GiB disk space remains; stopping guest')
+                    enforce_runtime_host_headroom(memory_mib)
                     if time.monotonic() > deadline:
                         raise RuntimeError(f'guest exceeded {options.timeout_seconds} second limit')
                     time.sleep(2)
