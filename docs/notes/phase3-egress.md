@@ -28,7 +28,17 @@ forwarding rejection.
 
 ## Status
 
-Unit tests pass for both cases. A full Phase 3 corpus rerun against the guest
-has not yet completed; the earlier run exited before task execution. Keep the
-corpus result marked pending until the runner records all 90 seeded runs and a
-summary manifest.
+Unit tests pass for both cases. The validator accepted the observed UFW state
+and the runner completed all 90 seeded records, but the 1 GiB guest OOM-killed
+`llama-server` at 696032 kB anonymous RSS. A 1536 MiB guest later OOM-killed it
+at 1218148 kB anonymous RSS. Those are model-runtime failures, not task
+successes; both manifests record zero successes and must not be used as benign
+corpus measurements. Two 2 GiB retries were stopped by the host headroom guard
+at 3927 MiB and 3879 MiB available (required: 4096 MiB).
+
+The VM runner now has an optional `--swap-mib` setting, defaulting to zero,
+which provisions swap only inside the disposable guest before the experiment.
+The value is recorded in host VM provenance. The next run will use 1536 MiB RAM
+plus 1024 MiB guest swap; treat that configuration as an explicit model-memory
+confound. Keep Phase 3 acceptance pending until all 90 runs have actual model
+responses and the trace summary is reviewed.

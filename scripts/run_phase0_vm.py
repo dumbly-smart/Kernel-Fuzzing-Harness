@@ -72,12 +72,25 @@ def write_guest_artifacts(directory, files):
             (directory / name).write_text(files[name])
 
 
-def cloud_init_bootstrap_command():
+def validate_swap_mib(swap_mib):
+    if (isinstance(swap_mib, bool) or not isinstance(swap_mib, int) or
+            swap_mib < 0 or swap_mib > 4096):
+        raise ValueError('swap size must be an integer from 0 through 4096 MiB')
+    return swap_mib
+
+
+def cloud_init_bootstrap_command(swap_mib=0):
+    swap_mib = validate_swap_mib(swap_mib)
+    swap_setup = ''
+    if swap_mib:
+        swap_setup = (f'fallocate -l {swap_mib}M /swapfile; '
+                      'chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile; ')
     return (
         'set -x; '
         'exec > >(tee /var/log/tripwire-bootstrap.log /dev/ttyS0) 2>&1; '
         'systemctl stop apt-daily.timer apt-daily-upgrade.timer; '
         'systemctl mask apt-daily.service apt-daily-upgrade.service; '
+        + swap_setup +
         'mkdir -p /opt/tripwire; '
         'ufw --force reset || true; '
         'python3 -c "import urllib.request; urllib.request.urlretrieve('
@@ -240,6 +253,8 @@ def main():
                         help="skip apt provisioning and update the environment lock on an accepted --base-guest")
     parser.add_argument("--memory-mib", type=int, default=2048,
                         help="guest memory in MiB (default: 2048)")
+    parser.add_argument("--swap-mib", type=int, default=0,
+                        help="optional guest-only swap file in MiB (default: 0)")
     parser.add_argument("--disk-gib", type=int, default=12,
                         help="overlay capacity in GiB (default: 12)")
     parser.add_argument("--overlay-name", default=None,
@@ -260,6 +275,7 @@ def main():
                         help="profile used by Phase 5 in an already provisioned guest")
     options = parser.parse_args()
     memory_mib, disk_gib = validate_vm_resources(options.memory_mib, options.disk_gib)
+    swap_mib = validate_swap_mib(options.swap_mib)
     # Match reproduce.sh's conservative host-side policy even when this runner
     # is invoked directly. It is a safety heuristic, not a model-fit guarantee.
     try:
@@ -469,7 +485,7 @@ systemctl poweroff
     config = {'package_update': False, 'package_upgrade': False,
               'write_files': [{'path': '/root/accept.sh', 'permissions': '0700', 'content': guest_script},
                               {'path': '/etc/systemd/system/tripwire-phase0.service', 'content': unit}],
-              'runcmd': [['bash', '-c', cloud_init_bootstrap_command()]]}
+              'runcmd': [['bash', '-c', cloud_init_bootstrap_command(swap_mib)]]}
     handler = functools.partial(SimpleHTTPRequestHandler, directory=str(seed))
     server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
     port = server.server_address[1]
@@ -489,6 +505,7 @@ systemctl poweroff
                   'base_guest_provenance': str(VM / 'provenance.json') if options.base_guest or options.base_disk_name else None,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
                   'memory_mib': memory_mib, 'disk_gib': disk_gib,
+                  'swap_mib': swap_mib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,
                   'phase3_run_dir': phase3_run_dir if options.phase3 else None,
                   'phase5': options.phase5, 'phase6': options.phase6, 'phase7': options.phase7,

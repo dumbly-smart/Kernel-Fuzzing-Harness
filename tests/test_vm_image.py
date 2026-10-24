@@ -69,6 +69,19 @@ class ImageVerificationTests(unittest.TestCase):
         self.assertLess(command.index('ufw --force reset'),
                         command.index('10.0.2.2:PORT/repo.tar'))
 
+    def test_cloud_init_bootstrap_can_enable_only_guest_swap(self):
+        command = vm.cloud_init_bootstrap_command(swap_mib=1024)
+
+        self.assertIn('fallocate -l 1024M /swapfile', command)
+        self.assertIn('chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile', command)
+
+    def test_swap_size_accepts_zero_or_bounded_integer_mebibytes(self):
+        self.assertEqual(vm.validate_swap_mib(0), 0)
+        self.assertEqual(vm.validate_swap_mib(1024), 1024)
+        for value in (-1, 4097, True, 1.5):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                vm.validate_swap_mib(value)
+
     def test_qemu_uses_local_nocloud_seed_medium(self):
         args = vm.nocloud_seed_qemu_args(Path('/tmp/tripwire-seed.iso'))
 
