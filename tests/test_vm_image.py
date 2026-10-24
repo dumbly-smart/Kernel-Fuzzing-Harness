@@ -50,9 +50,14 @@ class ImageVerificationTests(unittest.TestCase):
 
     def test_reuse_provisioned_guest_requires_base_guest_mode(self):
         self.assertTrue(vm.validate_guest_mode(base_guest=True,
+                                               base_disk_name=None,
                                                reuse_provisioned_base=True))
-        with self.assertRaisesRegex(ValueError, 'requires --base-guest'):
-            vm.validate_guest_mode(base_guest=False, reuse_provisioned_base=True)
+        self.assertTrue(vm.validate_guest_mode(base_guest=False,
+                                               base_disk_name='guest-phase3.qcow2',
+                                               reuse_provisioned_base=True))
+        with self.assertRaisesRegex(ValueError, 'requires a base disk'):
+            vm.validate_guest_mode(base_guest=False, base_disk_name=None,
+                                   reuse_provisioned_base=True)
 
     def test_base_guest_mode_preserves_baseline_and_uses_new_overlay(self):
         with tempfile.TemporaryDirectory() as directory:

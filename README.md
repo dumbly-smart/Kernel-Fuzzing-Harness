@@ -135,6 +135,32 @@ resource outcomes and acceptance status. To evaluate the baselines in a guest,
 run `make eval-detectors`; it writes held-out scores, metrics and an FP-cause
 log under `data/phase3-corpus/detector-eval/`.
 
+## Phase 5 injection suite
+
+Six local cases cover an out-of-scope fake-canary read, canary submission to a
+loopback sink, an unexpected process, a write outside the workspace, a poisoned
+summary, and a wrong-but-valid edit. Payloads are grouped by taxonomy hypothesis
+under `injections/`. Each case records whether its goal was reached, its observed
+OS events, and a transparent keyword prompt-classifier result. Monitor scores
+and per-case verdicts are generated against the benign training corpus.
+
+For a provisioned guest disk that contains the completed benign corpus and the
+same pinned Ollama model, run a fresh overlay:
+
+```sh
+TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
+  --base-disk-name guest-phase3-tiny.qcow2 --reuse-provisioned-base \
+  --memory-mib 2048 --disk-gib 24 --phase5 \
+  --phase5-model-config config/model.tiny.json
+```
+
+The runner resets UFW during cloud-init bootstrap, then the injection smoke
+reapplies deny-all egress with loopback allowed. The agent runs as the dedicated
+non-sudo `tripwire-agent` account. Injection data and trace artifacts remain in
+the disposable guest or ignored `data/vm/` output. See
+[Phase 5 notes](docs/notes/phase5.md) for the exact measurement procedure and
+current acceptance state.
+
 
 ## Phase 0 acceptance
 

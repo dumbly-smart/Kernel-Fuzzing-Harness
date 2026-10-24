@@ -63,9 +63,9 @@ def validate_vm_resources(memory_mib, disk_gib):
     return memory_mib, disk_gib
 
 
-def validate_guest_mode(*, base_guest, reuse_provisioned_base):
-    if reuse_provisioned_base and not base_guest:
-        raise ValueError("reuse-provisioned-base requires --base-guest")
+def validate_guest_mode(*, base_guest, base_disk_name, reuse_provisioned_base):
+    if reuse_provisioned_base and not (base_guest or base_disk_name):
+        raise ValueError("reuse-provisioned-base requires a base disk")
     return bool(reuse_provisioned_base)
 
 
@@ -88,12 +88,17 @@ def main():
                         help="maximum guest run time (default: 1800)")
     parser.add_argument("--phase3", action="store_true",
                         help="install the pinned local model and run all benign corpus seeds")
+    parser.add_argument("--phase5", action="store_true",
+                        help="run the local injection suite against a provisioned model guest")
     parser.add_argument("--phase3-model-config", default="config/model.json",
                         help="profile used by Phase 3 (paired model lock selected automatically)")
+    parser.add_argument("--phase5-model-config", default="config/model.json",
+                        help="profile used by Phase 5 in an already provisioned guest")
     options = parser.parse_args()
     memory_mib, disk_gib = validate_vm_resources(options.memory_mib, options.disk_gib)
     reuse_provisioned_base = validate_guest_mode(
         base_guest=options.base_guest,
+        base_disk_name=options.base_disk_name,
         reuse_provisioned_base=options.reuse_provisioned_base)
     phase3_model_config = Path(options.phase3_model_config)
     if (phase3_model_config.is_absolute() or phase3_model_config.parent != Path("config") or
@@ -102,6 +107,17 @@ def main():
         parser.error("phase3-model-config must be an existing config/*.json path")
     phase3_model_lock = phase3_model_config.with_name(
         f"{phase3_model_config.stem}.lock.json")
+    phase5_model_config = Path(options.phase5_model_config)
+    if (phase5_model_config.is_absolute() or phase5_model_config.parent != Path("config") or
+            phase5_model_config.suffix != ".json" or
+            not (ROOT / phase5_model_config).is_file()):
+        parser.error("phase5-model-config must be an existing config/*.json path")
+    phase5_model_lock = phase5_model_config.with_name(
+        f"{phase5_model_config.stem}.lock.json")
+    if options.phase5 and not reuse_provisioned_base:
+        parser.error("--phase5 requires --reuse-provisioned-base on a model-installed corpus guest")
+    if options.phase3 and options.phase5 and phase3_model_config != phase5_model_config:
+        parser.error("one VM run cannot install and evaluate two different model profiles")
     if isinstance(options.timeout_seconds, bool) or options.timeout_seconds <= 0:
         parser.error("timeout-seconds must be a positive integer")
     image_hash = verify_image()
@@ -163,6 +179,10 @@ if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
     MODEL_CONFIG=/opt/tripwire/PHASE3_MODEL_CONFIG RUN_DIR=/opt/tripwire/data/phase3-corpus bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
     status=$?
 fi
+if [ "$status" -eq 0 ] && [ "PHASE5" = "true" ]; then
+    MODEL_CONFIG=/opt/tripwire/PHASE5_MODEL_CONFIG RUN_DIR=/opt/tripwire/data/injection-corpus bash /opt/tripwire/scripts/smoke_injections.sh > /root/phase5-injections.log 2>&1
+    status=$?
+fi
 python3 - "$status" <<'RESULT'
 import base64, json, pathlib, sys
 files = {}
@@ -178,6 +198,7 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'model-install.log': '/root/model-install.log',
                    'model.lock.json': '/opt/tripwire/config/model.lock.json',
                    'phase3-model-lock.json': '/opt/tripwire/PHASE3_MODEL_LOCK',
+                   'phase5-model-lock.json': '/opt/tripwire/PHASE5_MODEL_LOCK',
                    'phase3-corpus.log': '/root/phase3-corpus.log',
                    'phase3-manifest.json': '/opt/tripwire/data/phase3-corpus/manifest.json',
                    'phase3-summary.json': '/opt/tripwire/data/phase3-corpus/corpus-summary.json',
@@ -187,8 +208,30 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase3-joined.jsonl': '/opt/tripwire/data/phase3-corpus/joined.jsonl',
                    'phase3-orphan-events.jsonl': '/opt/tripwire/data/phase3-corpus/orphan-events.jsonl',
                    'phase3-egress-lockdown.log': '/opt/tripwire/data/phase3-corpus/egress-lockdown.log',
+                   'phase3-agent-account.log': '/opt/tripwire/data/phase3-corpus/agent-account.log',
                    'phase3-loader.log': '/opt/tripwire/data/phase3-corpus/loader.log',
-                   'phase3-runner.log': '/opt/tripwire/data/phase3-corpus/runner.log'}.items():
+                   'phase3-runner.log': '/opt/tripwire/data/phase3-corpus/runner.log',
+                   'phase5-injections.log': '/root/phase5-injections.log',
+                   'phase5-manifest.json': '/opt/tripwire/data/injection-corpus/manifest.json',
+                   'phase5-summary.json': '/opt/tripwire/data/injection-corpus/summary.json',
+                   'phase5-runs.jsonl': '/opt/tripwire/data/injection-corpus/runs.jsonl',
+                   'phase5-calls.jsonl': '/opt/tripwire/data/injection-corpus/calls.jsonl',
+                   'phase5-events.jsonl': '/opt/tripwire/data/injection-corpus/events.jsonl',
+                   'phase5-joined.jsonl': '/opt/tripwire/data/injection-corpus/joined.jsonl',
+                   'phase5-join-report.json': '/opt/tripwire/data/injection-corpus/join-report.json',
+                   'phase5-canary-receipts.jsonl': '/opt/tripwire/data/injection-corpus/canary-receipts.jsonl',
+                   'phase5-egress-lockdown.log': '/opt/tripwire/data/injection-corpus/egress-lockdown.log',
+                   'phase5-agent-account.log': '/opt/tripwire/data/injection-corpus/agent-account.log',
+                   'phase5-prompt-classifier.json': '/opt/tripwire/data/injection-corpus/prompt-classifier.json',
+                   'phase5-detector-results.json': '/opt/tripwire/data/injection-corpus/detector-eval/results.json',
+                   'phase5-detector-scores.jsonl': '/opt/tripwire/data/injection-corpus/detector-eval/scores.jsonl',
+                   'phase5-false-positives.jsonl': '/opt/tripwire/data/injection-corpus/detector-eval/false-positives.jsonl',
+                   'phase5-attack-verdicts.jsonl': '/opt/tripwire/data/injection-corpus/detector-eval/attack-verdicts.jsonl',
+                   'phase5-runner.log': '/opt/tripwire/data/injection-corpus/runner.log',
+                   'phase5-sink.log': '/opt/tripwire/data/injection-corpus/sink.log',
+                   'phase5-loader.log': '/opt/tripwire/data/injection-corpus/loader.log',
+                   'phase5-join.log': '/opt/tripwire/data/injection-corpus/join.log',
+                   'phase5-detector-eval.log': '/opt/tripwire/data/injection-corpus/detector-eval.log'}.items():
     if pathlib.Path(path).exists():
         files[name] = pathlib.Path(path).read_text()
 payload = base64.b64encode(json.dumps({'status': int(sys.argv[1]), 'files': files}).encode()).decode()
@@ -204,6 +247,10 @@ systemctl poweroff
                                         f'"{str(options.phase3).lower()}" = "true"')
     guest_script = guest_script.replace('PHASE3_MODEL_CONFIG', str(phase3_model_config))
     guest_script = guest_script.replace('PHASE3_MODEL_LOCK', str(phase3_model_lock))
+    guest_script = guest_script.replace('PHASE5_MODEL_LOCK', str(phase5_model_lock))
+    guest_script = guest_script.replace('PHASE5_MODEL_CONFIG', str(phase5_model_config))
+    guest_script = guest_script.replace('"PHASE5" = "true"',
+                                        f'"{str(options.phase5).lower()}" = "true"')
     unit = '[Unit]\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nExecStart=/root/accept.sh\nTimeoutStartSec=infinity\n[Install]\nWantedBy=multi-user.target\n'
     # JSON is valid YAML; avoid a host PyYAML dependency.
     config = {'package_update': False, 'package_upgrade': False,
@@ -212,6 +259,7 @@ systemctl poweroff
               'runcmd': [['bash', '-c', 'systemctl stop apt-daily.timer apt-daily-upgrade.timer; '
                          'systemctl mask apt-daily.service apt-daily-upgrade.service; '
                          'mkdir -p /opt/tripwire; '
+                         'ufw --force reset >/dev/null 2>&1 || true; '
                          'python3 -c "import urllib.request; urllib.request.urlretrieve(\'http://10.0.2.2:PORT/repo.tar\', \'/root/repo.tar\')"; '
                          'tar -xf /root/repo.tar -C /opt/tripwire; '
                          'systemctl daemon-reload; systemctl enable tripwire-phase0.service; '
@@ -270,11 +318,22 @@ systemctl poweroff
     for name in ('setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
                  'smoke-agent-join.log', 'smoke-events.jsonl', 'phase2-events.jsonl',
                  'phase2-calls.jsonl', 'phase2-joins.jsonl', 'phase2-join-report.json',
-                 'environment.lock.json', 'phase3-egress-lockdown.log'):
+                 'environment.lock.json', 'phase3-egress-lockdown.log',
+                 'phase3-agent-account.log', 'phase5-agent-account.log',
+                 'phase5-injections.log', 'phase5-manifest.json', 'phase5-summary.json',
+                 'phase5-runs.jsonl', 'phase5-calls.jsonl', 'phase5-events.jsonl',
+                 'phase5-joined.jsonl', 'phase5-join-report.json',
+                 'phase5-canary-receipts.jsonl', 'phase5-egress-lockdown.log',
+                 'phase5-prompt-classifier.json', 'phase5-detector-results.json',
+                 'phase5-detector-scores.jsonl', 'phase5-false-positives.jsonl',
+                 'phase5-attack-verdicts.jsonl', 'phase5-runner.log', 'phase5-sink.log',
+                 'phase5-loader.log', 'phase5-join.log', 'phase5-detector-eval.log'):
         if name in result['files']:
             (VM / name).write_text(result['files'][name])
     if 'phase3-model-lock.json' in result['files']:
         (ROOT / phase3_model_lock).write_text(result['files']['phase3-model-lock.json'])
+    if 'phase5-model-lock.json' in result['files']:
+        (ROOT / phase5_model_lock).write_text(result['files']['phase5-model-lock.json'])
     print(f"Guest acceptance exit: {result['status']}; artifacts: {VM}", flush=True)
     raise SystemExit(result['status'])
 

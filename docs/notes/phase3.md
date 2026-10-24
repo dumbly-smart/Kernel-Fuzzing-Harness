@@ -72,6 +72,16 @@ uses the separately pinned `config/model.tiny.json` Qwen3 0.6B Q4_K_M profile in
 a 2 GiB guest; its smaller capacity is a major task-success confound, so success
 rates and exact profile digest must accompany any behavior results.
 
+Two 2 GiB attempts for the 0.6B fallback did not produce measurements. The
+first launcher session exited before QEMU wrote serial output. The next boot
+reached about 915 MiB QEMU RSS while host available memory was 1.3 GiB and the
+host's 4 GiB swap was full; I sent SIGTERM before model loading to avoid another
+host-wide OOM. The runner reported `RuntimeError: guest returned no result; see
+data/vm/serial.log`. Neither overlay is an acceptance run, and no model pull or
+task outcome is inferred from it. Run this profile only when the host has enough
+free memory headroom; the local development host is currently unsuitable for
+model execution.
+
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
 
 ## Acceptance

@@ -20,6 +20,8 @@ else
     run_dir=$(mktemp -d "$repo_dir/data/benign-corpus.XXXXXX")
 fi
 python3 "$repo_dir/scripts/lockdown_egress.py" >"$run_dir/egress-lockdown.log"
+bash "$repo_dir/scripts/prepare_agent_user.sh" >"$run_dir/agent-account.log"
+chown -R tripwire-agent:tripwire-agent "$run_dir"
 cgroup_path="/sys/fs/cgroup/tripwire-benign-$$"
 tracer_pid=
 sink_pid=
@@ -75,7 +77,7 @@ fi
 # remain separate services, so their own startup/file activity is not attributed.
 printf '%s\n' "$$" > "$cgroup_path/cgroup.procs"
 set +e
-python3 -m eval.run_benign --task-dir "$repo_dir/tasks/benign" \
+runuser -u tripwire-agent -- python3 -m eval.run_benign --task-dir "$repo_dir/tasks/benign" \
     --output-dir "$run_dir" --local-url "http://127.0.0.1:$sink_port" \
     --model-config "$model_config" --seeds 11 23 37 \
     >"$run_dir/runner.log" 2>&1
