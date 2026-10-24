@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from math import ceil
 from typing import Any, Iterable
 
 
@@ -25,7 +24,7 @@ def validate_stats_cadence(events: Iterable[dict[str, Any]], poll_interval_ms: i
     elapsed_ns = max(event["monotonic_ns"] for event in records) - min(
         event["monotonic_ns"] for event in records)
     interval_ns = poll_interval_ms * 1_000_000
-    maximum = 2 + ceil(elapsed_ns / interval_ns)
+    maximum = 2 + (elapsed_ns + interval_ns - 1) // interval_ns
     if stats_count > maximum:
         raise ValueError(
             f"stats records exceed configured cadence: {stats_count} records in "
