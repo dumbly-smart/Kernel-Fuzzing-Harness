@@ -67,6 +67,21 @@ def write_guest_artifacts(directory, files):
             (directory / name).write_text(files[name])
 
 
+def cloud_init_bootstrap_command():
+    return (
+        'set -x; '
+        'exec > >(tee /var/log/tripwire-bootstrap.log /dev/ttyS0) 2>&1; '
+        'systemctl stop apt-daily.timer apt-daily-upgrade.timer; '
+        'systemctl mask apt-daily.service apt-daily-upgrade.service; '
+        'mkdir -p /opt/tripwire; '
+        'ufw --force reset || true; '
+        'python3 -c "import urllib.request; urllib.request.urlretrieve('
+        "'http://10.0.2.2:PORT/repo.tar', '/root/repo.tar')\"; "
+        'tar -xf /root/repo.tar -C /opt/tripwire; '
+        'systemctl daemon-reload; systemctl enable tripwire-phase0.service; '
+        'systemctl start --no-block tripwire-phase0.service')
+
+
 def verify_image():
     result = command(['gpg', '--homedir', str(VM / 'gnupg'), '--batch',
                       '--status-fd', '1', '--verify', str(VM / 'SHA256SUMS.gpg'),
@@ -438,14 +453,7 @@ systemctl poweroff
     config = {'package_update': False, 'package_upgrade': False,
               'write_files': [{'path': '/root/accept.sh', 'permissions': '0700', 'content': guest_script},
                               {'path': '/etc/systemd/system/tripwire-phase0.service', 'content': unit}],
-              'runcmd': [['bash', '-c', 'systemctl stop apt-daily.timer apt-daily-upgrade.timer; '
-                         'systemctl mask apt-daily.service apt-daily-upgrade.service; '
-                         'mkdir -p /opt/tripwire; '
-                         'ufw --force reset >/dev/null 2>&1 || true; '
-                         'python3 -c "import urllib.request; urllib.request.urlretrieve(\'http://10.0.2.2:PORT/repo.tar\', \'/root/repo.tar\')"; '
-                         'tar -xf /root/repo.tar -C /opt/tripwire; '
-                         'systemctl daemon-reload; systemctl enable tripwire-phase0.service; '
-                         'systemctl start --no-block tripwire-phase0.service']]}
+              'runcmd': [['bash', '-c', cloud_init_bootstrap_command()]]}
     handler = functools.partial(SimpleHTTPRequestHandler, directory=str(seed))
     server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
     port = server.server_address[1]

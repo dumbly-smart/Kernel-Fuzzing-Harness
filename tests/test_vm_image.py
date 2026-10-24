@@ -15,6 +15,14 @@ spec.loader.exec_module(vm)
 
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_cloud_init_bootstrap_emits_commands_to_serial(self):
+        command = vm.cloud_init_bootstrap_command()
+
+        self.assertIn("set -x", command)
+        self.assertIn("tee /var/log/tripwire-bootstrap.log /dev/ttyS0", command)
+        self.assertIn("ufw --force reset", command)
+        self.assertIn("10.0.2.2:PORT/repo.tar", command)
+
     def test_persists_phase3_diagnostics_and_run_artifacts(self):
         artifacts = {
             "model-install.log": "Ollama ready\n",
