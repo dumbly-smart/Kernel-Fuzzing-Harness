@@ -152,6 +152,13 @@ python3 -m tripwire.join --events "$run_dir/events.jsonl" \
     --report "$run_dir/join-report.json" \
     --late-event-grace-ms "$(python3 -c 'import json; print(json.load(open("config/tripwire.json"))["late_event_grace_ms"])')"
 
+# Preserve the complete evidence before assertions so a failing acceptance
+# check can be diagnosed from the disposable guest's returned artifacts.
+cp "$run_dir/events.jsonl" "$repo_dir/data/phase2-smoke.events.jsonl"
+cp "$run_dir/calls.jsonl" "$repo_dir/data/phase2-smoke.calls.jsonl"
+cp "$run_dir/joins.jsonl" "$repo_dir/data/phase2-smoke.joins.jsonl"
+cp "$run_dir/join-report.json" "$repo_dir/data/phase2-smoke.join-report.json"
+
 python3 - "$run_dir" <<'PY'
 import json
 from pathlib import Path
@@ -180,8 +187,4 @@ print(json.dumps({
 }, sort_keys=True))
 PY
 
-cp "$run_dir/events.jsonl" "$repo_dir/data/phase2-smoke.events.jsonl"
-cp "$run_dir/calls.jsonl" "$repo_dir/data/phase2-smoke.calls.jsonl"
-cp "$run_dir/joins.jsonl" "$repo_dir/data/phase2-smoke.joins.jsonl"
-cp "$run_dir/join-report.json" "$repo_dir/data/phase2-smoke.join-report.json"
 echo "agent join artifacts: $run_dir"
