@@ -13,8 +13,52 @@ spec = importlib.util.spec_from_file_location('run_phase0_vm', Path(__file__).re
 vm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(vm)
 
+seed_spec = importlib.util.spec_from_file_location(
+    'nocloud_seed', Path(__file__).resolve().parents[1] / 'scripts/nocloud_seed.py')
+seed_iso = importlib.util.module_from_spec(seed_spec)
+seed_spec.loader.exec_module(seed_iso)
+
 
 class ImageVerificationTests(unittest.TestCase):
+    def test_nocloud_seed_iso_has_cidata_label_and_both_required_files(self):
+        user_data = '#cloud-config\n{}\n'
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / 'seed.iso'
+
+            seed_iso.write_seed_iso(image_path, user_data, 'tripwire-run-123')
+
+            image = image_path.read_bytes()
+            self.assertGreaterEqual(len(image) // 2048, 300)
+            descriptor = image[16 * 2048:17 * 2048]
+            self.assertEqual(descriptor[:7], b'\x01CD001\x01')
+            self.assertEqual(descriptor[40:46], b'CIDATA')
+            root_extent = int.from_bytes(descriptor[158:162], 'little')
+            root_size = int.from_bytes(descriptor[166:170], 'little')
+            self.assertEqual(descriptor[881], 1)
+            root = image[root_extent * 2048:root_extent * 2048 + root_size]
+            self.assertEqual(int.from_bytes(root[10:14], 'little'), root_size)
+            self.assertIn(b'USER-DATA;1', root)
+            self.assertIn(b'META-DATA;1', root)
+            files = {}
+            offset = 0
+            while offset < root_size and root[offset]:
+                length = root[offset]
+                entry = root[offset:offset + length]
+                name_length = entry[32]
+                name = entry[33:33 + name_length]
+                if name not in (b'\x00', b'\x01'):
+                    extent = int.from_bytes(entry[2:6], 'little')
+                    size = int.from_bytes(entry[10:14], 'little')
+                    files[name] = image[extent * 2048:extent * 2048 + size]
+                offset += length
+            self.assertEqual(files[b'USER-DATA;1'], user_data.encode())
+            self.assertIn(b'instance-id: tripwire-run-123', files[b'META-DATA;1'])
+
+    def test_nocloud_seed_iso_rejects_multiline_instance_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, 'single-line'):
+                seed_iso.write_seed_iso(Path(directory) / 'seed.iso', '{}', 'bad\nid')
+
     def test_cloud_init_bootstrap_emits_commands_to_serial(self):
         command = vm.cloud_init_bootstrap_command()
 
@@ -22,6 +66,15 @@ class ImageVerificationTests(unittest.TestCase):
         self.assertIn("tee /var/log/tripwire-bootstrap.log /dev/ttyS0", command)
         self.assertIn("ufw --force reset", command)
         self.assertIn("10.0.2.2:PORT/repo.tar", command)
+        self.assertLess(command.index('ufw --force reset'),
+                        command.index('10.0.2.2:PORT/repo.tar'))
+
+    def test_qemu_uses_local_nocloud_seed_medium(self):
+        args = vm.nocloud_seed_qemu_args(Path('/tmp/tripwire-seed.iso'))
+
+        self.assertEqual(args, [
+            '-drive', 'file=/tmp/tripwire-seed.iso,media=cdrom,readonly=on',
+            '-smbios', 'type=1,serial=ds=nocloud'])
 
     def test_persists_phase3_diagnostics_and_run_artifacts(self):
         artifacts = {

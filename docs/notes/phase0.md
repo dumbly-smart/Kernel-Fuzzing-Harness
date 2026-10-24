@@ -70,11 +70,11 @@ The exact version lock is committed in `config/environment.lock.json`.
 
 The first image download timed out after 240 seconds (curl exit 28) at
 554696704 of 625612288 bytes. A range-resumed download completed, and signature
-and full-image SHA256 checks passed before boot. Cloud-init warned that
-`nocloud-net` is deprecated and retried absent optional vendor data; the launcher
-now uses `nocloud` and supplies empty vendor data. The provenance retains the
-arguments actually used for the successful run. The later launcher adjustment
-was unit checked; a second fresh VM run using that adjustment was not performed.
+and full-image SHA256 checks passed before boot. The initial launch used
+`nocloud-net`; the current runner uses a local NoCloud seed ISO. See
+[the bootstrap regression note](phase0-vm-bootstrap.md) for why network-fetched
+cloud-init data failed on a guest with persisted egress lockdown and the
+successful locked-base verification.
 
 Known limits: this validates one Ubuntu 24.04 amd64 guest, not Ubuntu 22.04 or
 other architectures; no actual BPF program was loaded. Runtime/model pinning

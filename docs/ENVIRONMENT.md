@@ -59,6 +59,10 @@ Its URL, signed-manifest fingerprint, SHA256, launch arguments and tested source
 commit are in [VM provenance](notes/phase0-vm-provenance.json).
 Exact package revisions (including transitive dependencies) and tool output are
 in [the environment lock](../config/environment.lock.json).
+The host launcher uses QEMU 11.1.2 and generates its NoCloud seed ISO with the
+Python standard library; no host ISO utility or package installation is needed.
+The regression boot from a guest with persisted UFW lockdown is recorded in
+[the bootstrap note](notes/phase0-vm-bootstrap.md).
 The difference between pkg-config's libbpf and bpftool's reported libbpf reflects
 separate build dependencies; later C loaders use the development package.
 

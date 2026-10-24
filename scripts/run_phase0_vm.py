@@ -14,9 +14,14 @@ import shutil
 import subprocess
 import argparse
 import re
+import sys
 import threading
 import time
 import uuid
+
+# The runner is invoked as a script, so include its sibling helper module.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from nocloud_seed import write_seed_iso
 
 ROOT = Path(__file__).resolve().parents[1]
 VM = ROOT / 'data/vm'
@@ -80,6 +85,12 @@ def cloud_init_bootstrap_command():
         'tar -xf /root/repo.tar -C /opt/tripwire; '
         'systemctl daemon-reload; systemctl enable tripwire-phase0.service; '
         'systemctl start --no-block tripwire-phase0.service')
+
+
+def nocloud_seed_qemu_args(seed_iso):
+    """Attach cloud-init data locally so locked-down guests can still boot."""
+    return ['-drive', f'file={seed_iso},media=cdrom,readonly=on',
+            '-smbios', 'type=1,serial=ds=nocloud']
 
 
 def verify_image():
@@ -282,12 +293,10 @@ def main():
         raise RuntimeError(f"custom base disk does not exist: {base_disk}")
     seed = VM / 'seed'
     seed.mkdir(exist_ok=True)
+    seed_iso = VM / 'nocloud-seed.iso'
     if overlay.exists():
         raise RuntimeError(f'{overlay} already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
-    (seed / 'vendor-data').write_text('#cloud-config\n{}\n')
-    (seed / 'meta-data').write_text(
-        f'instance-id: tripwire-{uuid.uuid4()}\nlocal-hostname: tripwire\n')
     # Reboot persistence lets setup select the installed generic kernel. Results
     # return through serial output, never by mounting the guest disk on the host.
     guest_script = r'''#!/bin/bash
@@ -457,15 +466,16 @@ systemctl poweroff
     handler = functools.partial(SimpleHTTPRequestHandler, directory=str(seed))
     server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
     port = server.server_address[1]
-    (seed / 'user-data').write_text('#cloud-config\n' + json.dumps(config).replace('PORT', str(port)))
+    user_data = '#cloud-config\n' + json.dumps(config).replace('PORT', str(port))
+    write_seed_iso(seed_iso, user_data, f'tripwire-{uuid.uuid4()}')
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(base_disk), str(overlay), f'{disk_gib}G'])
     qemu_args = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', str(memory_mib),
             '-drive', f'file={overlay},if=virtio,format=qcow2', '-display', 'none',
             '-serial', f'file:{VM / "serial.log"}', '-monitor', 'none',
-            '-netdev', 'user,id=net0', '-device', 'virtio-net-pci,netdev=net0',
-            '-smbios', f'type=1,serial=ds=nocloud;s=http://10.0.2.2:{port}/']
+            '-netdev', 'user,id=net0', '-device', 'virtio-net-pci,netdev=net0']
+    qemu_args.extend(nocloud_seed_qemu_args(seed_iso))
     provenance = {'image_url': 'https://cloud-images.ubuntu.com/releases/noble/release-20260926/' + IMAGE,
                   'image_sha256': image_hash, 'signing_fingerprint': FINGERPRINT,
                   'base_guest_disk': str(base_disk) if options.base_guest or options.base_disk_name else None,

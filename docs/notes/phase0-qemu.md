@@ -3,8 +3,10 @@
 The existing host QEMU is used solely to launch a disposable VM. Packages and
 BPF compilation run inside that guest. There are no shared filesystems, forwarded
 SSH ports, host credentials, or host package installations. A loopback HTTP
-server serves only cloud-init seed files and `git archive HEAD`. Results return
-via the emulated serial port. The guest shuts down after the check.
+server serves only `git archive HEAD`. Cloud-init user-data and meta-data are
+attached as a local, read-only `CIDATA` ISO, so guests with persisted egress
+lockdown can still boot and reach the bootstrap command. Results return via the
+emulated serial port. The guest shuts down after the check.
 
 ## Reproduce
 
@@ -55,6 +57,6 @@ before copying a successful lock into `config/` and committing it.
 Guest acceptance completed successfully; see
 [the acceptance log](phase0-guest-acceptance.txt) and
 [the exact tested launch provenance](phase0-vm-provenance.json).
-The tested run used `nocloud-net`; the subsequent small datasource/vendor-data
-launcher fix passed syntax checking and the existing tests but has not had
-a second fresh-VM run.
+A later locked-base regression boot also passed: cloud-init selected the local
+ISO, UFW reset ran before `GET /repo.tar`, and all 125 tests passed in the guest.
+See [the seed transport note](phase0-vm-bootstrap.md) for the regression trace.
