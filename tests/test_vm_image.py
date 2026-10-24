@@ -74,6 +74,9 @@ class ImageVerificationTests(unittest.TestCase):
 
         self.assertIn('fallocate -l 1024M /swapfile', command)
         self.assertIn('chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile', command)
+        self.assertLess(command.index('set -e; fallocate'), command.index('mkdir -p /opt/tripwire'))
+        self.assertIn('swapon --show --noheadings --raw | wc -l', command)
+        self.assertIn('free -h; set +e;', command)
 
     def test_swap_size_accepts_zero_or_bounded_integer_mebibytes(self):
         self.assertEqual(vm.validate_swap_mib(0), 0)

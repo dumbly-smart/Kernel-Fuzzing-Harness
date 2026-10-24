@@ -38,7 +38,15 @@ at 3927 MiB and 3879 MiB available (required: 4096 MiB).
 
 The VM runner now has an optional `--swap-mib` setting, defaulting to zero,
 which provisions swap only inside the disposable guest before the experiment.
-The value is recorded in host VM provenance. The next run will use 1536 MiB RAM
-plus 1024 MiB guest swap; treat that configuration as an explicit model-memory
-confound. Keep Phase 3 acceptance pending until all 90 runs have actual model
-responses and the trace summary is reviewed.
+The value is recorded in host VM provenance. A 1024 MiB RAM plus 2048 MiB swap
+run completed 90 records but OOM-killed the model after 11 tool calls; only 2
+tasks succeeded, so it is not a usable corpus. A 3072 MiB swap request on the
+12 GiB guest disk produced the exact error `fallocate failed: No space left on
+device`. Bootstrap now fails immediately on swap setup errors and confirms that
+at least one swap device is active before proceeding.
+
+The next measured attempt will increase the disposable guest disk to 16 GiB and
+use 1024 MiB RAM plus 3072 MiB swap, for a 4 GiB guest memory-plus-swap budget.
+Treat RAM, swap, and disk size as explicit environment parameters; each is
+recorded in VM provenance. Keep Phase 3 acceptance pending until all 90 runs
+have actual model responses and the trace summary is reviewed.

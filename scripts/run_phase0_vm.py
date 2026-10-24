@@ -83,8 +83,10 @@ def cloud_init_bootstrap_command(swap_mib=0):
     swap_mib = validate_swap_mib(swap_mib)
     swap_setup = ''
     if swap_mib:
-        swap_setup = (f'fallocate -l {swap_mib}M /swapfile; '
-                      'chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile; ')
+        swap_setup = (f'set -e; fallocate -l {swap_mib}M /swapfile; '
+                      'chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile; '
+                      'test "$(swapon --show --noheadings --raw | wc -l)" -ge 1; '
+                      'free -h; set +e; ')
     return (
         'set -x; '
         'exec > >(tee /var/log/tripwire-bootstrap.log /dev/ttyS0) 2>&1; '
