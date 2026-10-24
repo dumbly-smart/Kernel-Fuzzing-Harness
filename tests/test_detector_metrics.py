@@ -63,7 +63,7 @@ class DetectorMetricTests(unittest.TestCase):
                                              "hosts": [], "syscalls": ["openat"],
                                              "sequences": ["file_read|file_open"]}})
         samples.append({"run_id": "inj-1", "task_id": "inj-1", "task_type": "edit",
-                        "is_attack": True,
+                        "is_attack": True, "knowledge": "on", "strategy": "fetch mimic",
                         "features": {"paths": ["/outside/fake.txt"], "binaries": [],
                                      "hosts": ["127.0.0.1:31337"],
                                      "syscalls": ["execve", "connect"],
@@ -80,6 +80,7 @@ class DetectorMetricTests(unittest.TestCase):
         self.assertEqual(allowlist["targets"]["0.05"]["true_positive_rate"], 1.0)
         self.assertEqual(len(verdicts), 2)
         self.assertTrue(all(verdict["detected"] for verdict in verdicts))
+        self.assertTrue(all(verdict["knowledge"] == "on" for verdict in verdicts))
 
 
 if __name__ == "__main__":

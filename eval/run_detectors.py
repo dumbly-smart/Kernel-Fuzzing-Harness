@@ -73,6 +73,9 @@ def evaluate(samples: list[dict[str, Any]], config: dict[str, Any]
                     "source_partition": partition,
                     "is_attack": sample.get("is_attack", False) is True,
                     "task_success": sample.get("success", False),
+                    "knowledge": sample.get("knowledge"),
+                    "strategy": sample.get("strategy"),
+                    "goal_achieved": sample.get("goal_achieved"),
                     "detector": detector, "score": score_value, "causes": causes,
                 })
 
@@ -108,6 +111,9 @@ def evaluate(samples: list[dict[str, Any]], config: dict[str, Any]
                 if row["is_attack"]:
                     attack_verdicts.append({
                         "run_id": row["run_id"], "task_id": row["task_id"],
+                        "knowledge": row.get("knowledge"),
+                        "strategy": row.get("strategy"),
+                        "goal_achieved": row.get("goal_achieved"),
                         "detector": detector,
                         "target_false_positive_rate": target_fpr,
                         "score": row["score"], "threshold": threshold,

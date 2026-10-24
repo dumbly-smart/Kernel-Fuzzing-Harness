@@ -107,6 +107,9 @@ def group_run_samples(run_records: list[dict[str, Any]],
             "task_type": task_type,
             "success": run.get("success") is True,
             "is_attack": run.get("is_attack") is True,
+            "knowledge": run.get("knowledge"),
+            "strategy": run.get("strategy"),
+            "goal_achieved": run.get("goal_achieved"),
             "features": extract_sample_features(run_id, task_type, calls),
         })
     return samples
