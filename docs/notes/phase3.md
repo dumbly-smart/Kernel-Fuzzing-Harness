@@ -52,11 +52,22 @@ also lack `build/` entirely, so the harness now creates it with the test user's
 ownership before changing existing outputs. This attempt did not reach model
 installation.
 
+After that ownership fix, the corrected 4 GiB guest ran Ollama installation
+without returning its serial result bundle. The host kernel log identifies the
+cause precisely: at 11:00 local time, a `tokio-rt-worker` allocation invoked
+the global OOM killer, which killed `qemu-system-x86` (PID 173105) at 4,223,580
+KiB anonymous RSS. The overlay reached 4.2 GB; no `TRIPWIRE_RESULT` marker was
+written, so this run provides no model lock or corpus outcome. I will not repeat
+that memory allocation. The host currently cannot safely complete the 8B model
+path in this guest size; the next run will use an explicitly identified smaller
+quantized Qwen3 profile in a 3 GiB guest, while retaining the 8B config as the
+preferred research profile. Model size is a utility confound and will be written
+into each corpus manifest.
+
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
 
 ## Acceptance
 
-Pending a fresh guest run with the corrected asset name. Keep the exact model
-manifest digest, 90 task outcomes, join metrics, dropped-event count, and
-behavior summaries with the acceptance artifacts; do not fill these from
-expected values.
+Pending a fresh guest run. Keep the exact model manifest digest, 90 task
+outcomes, join metrics, dropped-event count, and behavior summaries with the
+acceptance artifacts; do not fill these from expected values.
