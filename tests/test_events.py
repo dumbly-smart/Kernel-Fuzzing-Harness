@@ -29,6 +29,12 @@ class ParseEventTests(unittest.TestCase):
         self.assertEqual(parsed["return_code"], -2)
         self.assertEqual(parsed["path"], 'a"b\\c\\n')
 
+    def test_parses_at_fdcwd_dirfd(self):
+        event = common("syscall")
+        event.update(syscall="openat", return_code=0, dirfd=-100)
+
+        self.assertEqual(parse_event(json.dumps(event))["dirfd"], -100)
+
     def test_parses_process_fork(self):
         event = common("process_fork")
         event.update(child_pid=43, child_tgid=43)

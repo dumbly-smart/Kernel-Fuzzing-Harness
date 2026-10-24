@@ -50,7 +50,11 @@ def parse_event(line: str) -> dict[str, Any]:
         for key in ("path", "path2", "address"):
             if key in event and event[key] is not None and not isinstance(event[key], str):
                 raise ValueError(f"field {key!r} must be a string or null")
-        for key in ("dirfd", "fd", "byte_count", "family", "port"):
+        if "dirfd" in event and event["dirfd"] is not None:
+            # openat-style syscalls use -100 (AT_FDCWD) when paths are relative
+            # to the process working directory instead of an explicit fd.
+            _integer(event, "dirfd", minimum=-100)
+        for key in ("fd", "byte_count", "family", "port"):
             if key in event and event[key] is not None:
                 _integer(event, key)
     elif event_type == "process_fork":
