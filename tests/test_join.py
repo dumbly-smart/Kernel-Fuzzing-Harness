@@ -78,6 +78,20 @@ class JoinEventsTests(unittest.TestCase):
         self.assertEqual(result["calls"][1]["events"], [])
         self.assertEqual([e["sequence"] for e in result["ambiguous_events"]], [1])
 
+    def test_prefers_closest_tool_process_when_grace_windows_overlap(self):
+        records = [
+            event("process_fork", 1, 22, pid=100, child_pid=101),
+            event("syscall", 2, 23, pid=101, syscall="execve", return_code=0),
+        ]
+        previous = call("previous", start=10, end=20, pid=100)
+        current = call("current", start=22, end=30, pid=101)
+
+        result = join_events(records, [previous, current], late_event_grace_ms=5)
+
+        self.assertEqual([e["sequence"] for e in result["calls"][0]["events"]], [1])
+        self.assertEqual([e["sequence"] for e in result["calls"][1]["events"]], [2])
+        self.assertEqual(result["ambiguous_events"], [])
+
     def test_cgroup_mismatch_is_orphaned_and_rate_is_reported(self):
         records = [event("syscall", 1, 15, cgroup_id=701, syscall="openat", return_code=4)]
 

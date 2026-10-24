@@ -71,20 +71,20 @@ def join_events(
                     (event["pid"], event["monotonic_ns"], event["cgroup_id"])
                 )
 
-    def descends_from(pid: int, root_pid: int, at_ns: int, cgroup_id: int) -> bool:
-        pending = [pid]
+    def ancestry_distance(pid: int, root_pid: int, at_ns: int, cgroup_id: int) -> int | None:
+        pending = [(pid, 0)]
         visited = set()
         while pending:
-            current = pending.pop()
+            current, distance = pending.pop(0)
             if current == root_pid:
-                return True
+                return distance
             if current in visited:
                 continue
             visited.add(current)
             for parent, fork_ns, fork_cgroup in parents_by_child.get(current, ()):
                 if fork_ns <= at_ns and fork_cgroup == cgroup_id:
-                    pending.append(parent)
-        return False
+                    pending.append((parent, distance + 1))
+        return None
 
     orphan_events = []
     ambiguous_events = []
@@ -95,17 +95,28 @@ def join_events(
         if any(isinstance(v, bool) or not isinstance(v, int) or v < 0
                for v in (event_time, event_pid, event_cgroup)):
             raise ValueError("event monotonic_ns, pid, and cgroup_id must be non-negative integers")
-        matches = [call_record for call_record in call_records
-                   if call_record["cgroup_id"] == event_cgroup
-                   and call_record["start_monotonic_ns"] <= event_time
-                   and event_time <= call_record["end_monotonic_ns"] + grace_ns
-                   and descends_from(event_pid, call_record["tool_pid"], event_time, event_cgroup)]
+        matches = []
+        for call_record in call_records:
+            if (call_record["cgroup_id"] != event_cgroup
+                    or call_record["start_monotonic_ns"] > event_time
+                    or event_time > call_record["end_monotonic_ns"] + grace_ns):
+                continue
+            distance = ancestry_distance(event_pid, call_record["tool_pid"],
+                                         event_time, event_cgroup)
+            if distance is not None:
+                matches.append((distance, call_record))
         if len(matches) == 1:
-            matches[0]["events"].append(event)
-        elif not matches:
-            orphan_events.append(event)
+            matches[0][1]["events"].append(event)
+        elif len(matches) > 1:
+            closest_distance = min(distance for distance, _ in matches)
+            closest = [record for distance, record in matches
+                       if distance == closest_distance]
+            if len(closest) == 1:
+                closest[0]["events"].append(event)
+            else:
+                ambiguous_events.append(event)
         else:
-            ambiguous_events.append(event)
+            orphan_events.append(event)
 
     event_count = len(event_records)
     orphan_count = len(orphan_events)
