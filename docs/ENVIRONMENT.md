@@ -11,11 +11,23 @@
   readable `/sys/kernel/btf/vmlinux`, cgroup v2. Exact release recorded in lock
   after reboot. No floating kernel is accepted against an existing lock.
 - libbpf/libelf/zlib, bpftool, Make, Python: same snapshot and exact lock.
-- Python dependencies: standard library only. No pip dependencies.
+- Python dependencies: standard library plus Ubuntu's pinned `python3-yaml`.
 - Intended userspace: Python plus small C/libbpf loader; agent: minimal ReAct;
-  runtime: Ollama. These are defaults pending user preference. Runtime/model are
-  **not installed or pinned yet**; choose exact runtime version, model digest,
-  quantization, seed and sampling settings before agent work. Paid APIs disabled.
+  local runtime: Ollama 0.40.7, installed from a SHA256-pinned official
+  `ollama-linux-amd64.tar.zst` release archive. Paid APIs are disabled.
+- Preferred Phase 3 model profile: `qwen3:8b-q4_K_M`, quantized Q4_K_M, with
+  2048 context tokens, temperature 0, 512 prediction tokens and at most 8 tool
+  turns. The exact manifest digest and layer digests are generated in
+  `config/model.lock.json` inside the guest and returned with corpus artifacts.
+- Constrained-host profile: `config/model.low-memory.json` selects the official
+  `qwen3:1.7b-q4_K_M` tag with the same generation settings. It is an explicit
+  utility confound, not interchangeable with the preferred 8B model. Its
+  manifest lock is kept separately as `config/model.low-memory.lock.json`.
+  Model sizes and license are documented by the [official Qwen3 Ollama
+  library entry](https://ollama.com/library/qwen3%3A1.7b-q4_K_M); no benchmark
+  performance is inferred from the catalog page.
+- Research parameters for detector features, task-level split, n-gram order and
+  FPR targets live in `config/detectors.json`.
 
 ## Accepted guest — 2026-10-22
 

@@ -1,9 +1,9 @@
 # Tripwire
 
 Research project for an eBPF behavioral monitor of tool-using LLM agents and an
-adaptive attacker against that monitor. Phase 0 and the Phase 1 cgroup-scoped
-tracer are implemented. The agent harness, behavior corpus, detectors, injection
-suite, adaptive attacker, and research measurements remain to be built.
+adaptive attacker against that monitor. Phases 0–2 and the Phase 3 local agent,
+benign corpus, and Phase 4 detector baselines are implemented. Injection,
+adaptive attacker, taxonomy, and final research measurements are in progress.
 
 All experiments belong in a throwaway guest you control, using fake secrets and
 local sinks. Never mount host home directories or pass through host credentials.
@@ -102,6 +102,33 @@ fork ancestry, a configurable late-event grace, and an explicit ambiguous/orphan
 report. Run `sudo make smoke-agent-join` in the disposable guest to exercise
 ten tasks against a guest-local sink. The measured results and join limits are
 in [Phase 2 notes](docs/notes/phase2.md).
+
+## Phase 3 benign corpus
+
+The minimal ReAct harness uses Ollama on guest loopback, with model runtime,
+archive checksum, exact model tag, generation parameters, and manifest digest
+recorded in separate config/lock files. The preferred profile is the pinned
+Qwen3 8B Q4_K_M model. If the VM memory budget cannot accommodate it, the
+explicit `config/model.low-memory.json` profile uses Qwen3 1.7B Q4_K_M; report
+that smaller model as a task-utility confound. Both profiles use the same tool
+allowlists and 30 YAML tasks. Each task runs with three fixed seeds, and failed
+model calls remain in the dataset.
+
+To run the full corpus in a disposable guest based on the accepted disk:
+
+```sh
+TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
+  --base-guest --reuse-provisioned-base \
+  --memory-mib 3072 --disk-gib 24 --phase3 \
+  --phase3-model-config config/model.low-memory.json
+```
+
+The runner hands artifacts back through the QEMU serial channel and writes them
+under ignored `data/vm/` paths. The sink is bound only to guest loopback and is
+kept outside the agent cgroup. See [Phase 3 notes](docs/notes/phase3.md) for
+resource outcomes and acceptance status. To evaluate the baselines in a guest,
+run `make eval-detectors`; it writes held-out scores, metrics and an FP-cause
+log under `data/phase3-corpus/detector-eval/`.
 
 
 ## Phase 0 acceptance
