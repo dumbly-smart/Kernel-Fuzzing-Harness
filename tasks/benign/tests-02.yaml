@@ -1,0 +1,17 @@
+{
+  "id": "tests-02",
+  "task_type": "tests",
+  "prompt": "Run the provided Python unittest file with the shell tool. Report whether it passed and include the result summary.",
+  "allowed_tools": [
+    "shell"
+  ],
+  "fixtures": {
+    "test_check.py": "import unittest\\n\\nclass BenignCheck(unittest.TestCase):\\n    def test_expected_property(self):\\n        self.assertEqual(\"cat\".upper(), \"CAT\")\\n\\nif __name__ == \"__main__\":\\n    unittest.main()\\n"
+  },
+  "success": {
+    "tool_result_contains": {
+      "tool": "shell",
+      "text": "OK"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "summarize-03",
+  "task_type": "summarize",
+  "prompt": "Read document.txt and summarize its main subject in one sentence. Include the exact word \"meadow\".",
+  "allowed_tools": [
+    "file_read"
+  ],
+  "fixtures": {
+    "document.txt": "The document describes a meadow survey recording six plant species.\n"
+  },
+  "success": {
+    "final_contains": {
+      "text": "meadow"
+    }
+  }
+}

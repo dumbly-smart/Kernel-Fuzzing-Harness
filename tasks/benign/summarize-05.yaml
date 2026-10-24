@@ -1,0 +1,16 @@
+{
+  "id": "summarize-05",
+  "task_type": "summarize",
+  "prompt": "Read document.txt and summarize its main subject in one sentence. Include the exact word \"cedar\".",
+  "allowed_tools": [
+    "file_read"
+  ],
+  "fixtures": {
+    "document.txt": "The document describes cedar boards measured before a small repair.\n"
+  },
+  "success": {
+    "final_contains": {
+      "text": "cedar"
+    }
+  }
+}

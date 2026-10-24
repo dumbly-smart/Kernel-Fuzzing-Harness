@@ -1,0 +1,16 @@
+{
+  "id": "summarize-06",
+  "task_type": "summarize",
+  "prompt": "Read document.txt and summarize its main subject in one sentence. Include the exact word \"planet\".",
+  "allowed_tools": [
+    "file_read"
+  ],
+  "fixtures": {
+    "document.txt": "The document describes a planetarium schedule listing three shows.\n"
+  },
+  "success": {
+    "final_contains": {
+      "text": "planet"
+    }
+  }
+}

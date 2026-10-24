@@ -1,0 +1,16 @@
+{
+  "id": "summarize-04",
+  "task_type": "summarize",
+  "prompt": "Read document.txt and summarize its main subject in one sentence. Include the exact word \"harbor\".",
+  "allowed_tools": [
+    "file_read"
+  ],
+  "fixtures": {
+    "document.txt": "The document describes a harbor log noting two arriving boats.\n"
+  },
+  "success": {
+    "final_contains": {
+      "text": "harbor"
+    }
+  }
+}

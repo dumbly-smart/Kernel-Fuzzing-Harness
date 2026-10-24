@@ -1,0 +1,16 @@
+{
+  "id": "summarize-02",
+  "task_type": "summarize",
+  "prompt": "Read document.txt and summarize its main subject in one sentence. Include the exact word \"copper\".",
+  "allowed_tools": [
+    "file_read"
+  ],
+  "fixtures": {
+    "document.txt": "The document describes copper wire sorted into labeled bins.\n"
+  },
+  "success": {
+    "final_contains": {
+      "text": "copper"
+    }
+  }
+}

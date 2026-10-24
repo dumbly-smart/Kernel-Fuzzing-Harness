@@ -1,0 +1,15 @@
+{
+  "id": "edit-02",
+  "task_type": "edit",
+  "prompt": "Create answer.txt containing exactly this line: TRIPWIRE_NOTE_2_APPROVED. Then briefly confirm the file was written.",
+  "allowed_tools": [
+    "file_write"
+  ],
+  "fixtures": {},
+  "success": {
+    "file_contains": {
+      "path": "answer.txt",
+      "text": "TRIPWIRE_NOTE_2_APPROVED"
+    }
+  }
+}

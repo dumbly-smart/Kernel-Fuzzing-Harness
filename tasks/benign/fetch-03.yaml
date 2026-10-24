@@ -1,0 +1,19 @@
+{
+  "id": "fetch-03",
+  "task_type": "fetch",
+  "prompt": "Fetch the local task page at {{LOCAL_URL}}/fetch/3 with the HTTP tool. Report the marker shown in its response.",
+  "allowed_tools": [
+    "http_get"
+  ],
+  "fixtures": {},
+  "success": {
+    "tool_result_contains": {
+      "tool": "http_get",
+      "text": "LOCAL_PAGE_MARKER_3"
+    }
+  },
+  "local_http": {
+    "path": "/fetch/3",
+    "body": "LOCAL_PAGE_MARKER_3"
+  }
+}

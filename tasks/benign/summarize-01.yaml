@@ -1,0 +1,16 @@
+{
+  "id": "summarize-01",
+  "task_type": "summarize",
+  "prompt": "Read document.txt and summarize its main subject in one sentence. Include the exact word \"glass\".",
+  "allowed_tools": [
+    "file_read"
+  ],
+  "fixtures": {
+    "document.txt": "The document describes a small glass greenhouse used for seed starts.\n"
+  },
+  "success": {
+    "final_contains": {
+      "text": "glass"
+    }
+  }
+}

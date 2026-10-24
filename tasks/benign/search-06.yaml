@@ -1,0 +1,16 @@
+{
+  "id": "search-06",
+  "task_type": "search",
+  "prompt": "Read notes/source.txt, find the exact marker SEARCH_MARKER_6, and state the marker and its topic in one sentence.",
+  "allowed_tools": [
+    "file_read"
+  ],
+  "fixtures": {
+    "notes/source.txt": "Topic 6 is a synthetic benign search fixture.\nUnique marker: SEARCH_MARKER_6\nDo not infer anything beyond this text.\n"
+  },
+  "success": {
+    "final_contains": {
+      "text": "SEARCH_MARKER_6"
+    }
+  }
+}
