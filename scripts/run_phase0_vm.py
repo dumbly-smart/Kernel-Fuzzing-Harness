@@ -63,6 +63,12 @@ def validate_vm_resources(memory_mib, disk_gib):
     return memory_mib, disk_gib
 
 
+def validate_guest_mode(*, base_guest, reuse_provisioned_base):
+    if reuse_provisioned_base and not base_guest:
+        raise ValueError("reuse-provisioned-base requires --base-guest")
+    return bool(reuse_provisioned_base)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     base_group = parser.add_mutually_exclusive_group()
@@ -70,6 +76,8 @@ def main():
                         help="create a fresh cloud-init instance from the previously accepted guest disk")
     base_group.add_argument("--base-disk-name", default=None,
                         help="use an existing disk filename under data/vm as immutable backing")
+    parser.add_argument("--reuse-provisioned-base", action="store_true",
+                        help="skip apt provisioning and update the environment lock on an accepted --base-guest")
     parser.add_argument("--memory-mib", type=int, default=2048,
                         help="guest memory in MiB (default: 2048)")
     parser.add_argument("--disk-gib", type=int, default=12,
@@ -82,6 +90,9 @@ def main():
                         help="install the pinned local model and run all benign corpus seeds")
     options = parser.parse_args()
     memory_mib, disk_gib = validate_vm_resources(options.memory_mib, options.disk_gib)
+    reuse_provisioned_base = validate_guest_mode(
+        base_guest=options.base_guest,
+        reuse_provisioned_base=options.reuse_provisioned_base)
     if isinstance(options.timeout_seconds, bool) or options.timeout_seconds <= 0:
         parser.error("timeout-seconds must be a positive integer")
     image_hash = verify_image()
@@ -103,6 +114,10 @@ def main():
     guest_script = r'''#!/bin/bash
 set -uo pipefail
 cd /opt/tripwire
+if [ "REUSE_PROVISIONED" = "true" ]; then
+    python3 scripts/check_env.py --record > /root/setup.log 2>&1
+    status=$?
+else
 bash scripts/setup_vm.sh --disposable-guest > /root/setup.log 2>&1
 status=$?
 if [ "$status" -ne 0 ] && grep -q 'Reboot the VM into that kernel' /root/setup.log; then
@@ -110,9 +125,12 @@ if [ "$status" -ne 0 ] && grep -q 'Reboot the VM into that kernel' /root/setup.l
     systemctl reboot
     exit 0
 fi
+fi
 if [ "$status" -eq 0 ]; then
+    if [ "REUSE_PROVISIONED" != "true" ]; then
     bash scripts/setup_vm.sh --disposable-guest > /root/setup-repeat.log 2>&1
     status=$?
+    fi
 fi
 if [ "$status" -eq 0 ]; then
     su ubuntu -s /bin/bash -c 'cd /opt/tripwire && make check && make test' > /root/acceptance.log 2>&1
@@ -167,6 +185,8 @@ RESULT
 systemctl disable tripwire-phase0.service
 systemctl poweroff
 '''
+    guest_script = guest_script.replace(
+        '"REUSE_PROVISIONED"', f'"{str(reuse_provisioned_base).lower()}"')
     guest_script = guest_script.replace('"PHASE3" = "true"',
                                         f'"{str(options.phase3).lower()}" = "true"')
     unit = '[Unit]\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nExecStart=/root/accept.sh\nTimeoutStartSec=infinity\n[Install]\nWantedBy=multi-user.target\n'
@@ -200,6 +220,7 @@ systemctl poweroff
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
                   'memory_mib': memory_mib, 'disk_gib': disk_gib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,
+                  'reuse_provisioned_base': reuse_provisioned_base,
                   'qemu_arguments': qemu_args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
     (VM / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
     try:
