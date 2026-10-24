@@ -77,8 +77,9 @@ if ! curl --fail --silent http://127.0.0.1:11434/api/version >/dev/null; then
     echo 'ERROR: local Ollama service did not become ready on 127.0.0.1:11434' >&2
     exit 1
 fi
-version=$(/usr/local/bin/ollama --version 2>&1)
-[[ $version == *"$runtime_version"* ]] || {
+version_json=$(curl --fail --silent --show-error http://127.0.0.1:11434/api/version)
+version=$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["version"])' <<< "$version_json")
+[[ $version == "$runtime_version" ]] || {
     echo "ERROR: expected Ollama $runtime_version, got: $version" >&2
     exit 1
 }

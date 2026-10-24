@@ -42,10 +42,15 @@ def verify_image():
     return actual
 
 
-def vm_disk_paths(vm_dir, reuse_guest, overlay_name=None):
+def vm_disk_paths(vm_dir, reuse_guest, overlay_name=None, base_disk_name=None):
     """Select an immutable backing disk and a fresh overlay path."""
-    if overlay_name is not None and Path(overlay_name).name != overlay_name:
-        raise ValueError("overlay name must be a filename, not a path")
+    for name, label in ((overlay_name, "overlay"), (base_disk_name, "base disk")):
+        if name is not None and Path(name).name != name:
+            raise ValueError(f"{label} name must be a filename, not a path")
+    if reuse_guest and base_disk_name is not None:
+        raise ValueError("choose either the accepted base guest or a custom base disk")
+    if base_disk_name is not None:
+        return vm_dir / base_disk_name, vm_dir / (overlay_name or 'guest-derived.qcow2')
     if reuse_guest:
         return vm_dir / 'guest.qcow2', vm_dir / (overlay_name or 'guest-phase1.qcow2')
     return vm_dir / IMAGE, vm_dir / (overlay_name or 'guest.qcow2')
@@ -60,8 +65,11 @@ def validate_vm_resources(memory_mib, disk_gib):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-guest", action="store_true",
+    base_group = parser.add_mutually_exclusive_group()
+    base_group.add_argument("--base-guest", action="store_true",
                         help="create a fresh cloud-init instance from the previously accepted guest disk")
+    base_group.add_argument("--base-disk-name", default=None,
+                        help="use an existing disk filename under data/vm as immutable backing")
     parser.add_argument("--memory-mib", type=int, default=2048,
                         help="guest memory in MiB (default: 2048)")
     parser.add_argument("--disk-gib", type=int, default=12,
@@ -78,7 +86,10 @@ def main():
         parser.error("timeout-seconds must be a positive integer")
     image_hash = verify_image()
     base_disk, overlay = vm_disk_paths(VM, reuse_guest=options.base_guest,
-                                       overlay_name=options.overlay_name)
+                                       overlay_name=options.overlay_name,
+                                       base_disk_name=options.base_disk_name)
+    if options.base_disk_name and not base_disk.is_file():
+        raise RuntimeError(f"custom base disk does not exist: {base_disk}")
     seed = VM / 'seed'
     seed.mkdir(exist_ok=True)
     if overlay.exists():
@@ -184,8 +195,8 @@ systemctl poweroff
             '-smbios', f'type=1,serial=ds=nocloud;s=http://10.0.2.2:{port}/']
     provenance = {'image_url': 'https://cloud-images.ubuntu.com/releases/noble/release-20260926/' + IMAGE,
                   'image_sha256': image_hash, 'signing_fingerprint': FINGERPRINT,
-                  'base_guest_disk': str(base_disk) if options.base_guest else None,
-                  'base_guest_provenance': str(VM / 'provenance.json') if options.base_guest else None,
+                  'base_guest_disk': str(base_disk) if options.base_guest or options.base_disk_name else None,
+                  'base_guest_provenance': str(VM / 'provenance.json') if options.base_guest or options.base_disk_name else None,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
                   'memory_mib': memory_mib, 'disk_gib': disk_gib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,

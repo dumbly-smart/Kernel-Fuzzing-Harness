@@ -32,6 +32,22 @@ class ImageVerificationTests(unittest.TestCase):
             self.assertEqual(base, root / 'guest.qcow2')
             self.assertEqual(overlay, root / 'guest-phase3.qcow2')
 
+    def test_failed_guest_can_be_used_as_an_immutable_base_for_a_fresh_overlay(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'guest-phase3b.qcow2').touch()
+            base, overlay = vm.vm_disk_paths(
+                root, reuse_guest=False, base_disk_name='guest-phase3b.qcow2',
+                overlay_name='guest-phase3c.qcow2')
+            self.assertEqual(base, root / 'guest-phase3b.qcow2')
+            self.assertEqual(overlay, root / 'guest-phase3c.qcow2')
+
+    def test_custom_base_and_overlay_names_cannot_escape_vm_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, 'filename'):
+                vm.vm_disk_paths(Path(directory), reuse_guest=False,
+                                 base_disk_name='../guest.qcow2')
+
     def test_base_guest_mode_preserves_baseline_and_uses_new_overlay(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

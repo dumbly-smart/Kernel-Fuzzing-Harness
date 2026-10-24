@@ -24,6 +24,16 @@ the nonexistent `ollama-linux-amd64.tgz` URL and GitHub returned HTTP 404
 `config/model.json`; the corrected installer verifies the same SHA before
 extracting it. No model inference or corpus runs occurred in that attempt.
 
+The second guest downloaded and checksum-verified the 1.4 GiB release asset,
+extracted it, started the loopback service, and received a successful
+`/api/version` health response. It then stopped because `/usr/local/bin/ollama
+--version` exited with status 2. The installer captured that command's output
+inside shell substitution, so its stderr was not preserved in the returned log;
+the trap reported the failing command but not the captured text. The health
+check showed the service was responding, so version verification now reads the
+server's `/api/version` JSON field, which checks the process actually serving
+requests. No model pull or corpus run occurred in this attempt either.
+
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
 
 ## Acceptance
