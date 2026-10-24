@@ -10,7 +10,9 @@
 - Kernel: generic Ubuntu kernel resolved from the snapshot; minimum 5.15,
   readable `/sys/kernel/btf/vmlinux`, cgroup v2. Exact release recorded in lock
   after reboot. No floating kernel is accepted against an existing lock.
-- libbpf/libelf/zlib, bpftool, Make, Python: same snapshot and exact lock.
+- libbpf/libelf/zlib, bpftool, Make, Python, and `curl` (used by the local
+  naive mimicry baseline): same snapshot and exact lock. The accepted lock has
+  curl `8.5.0-2ubuntu10.15`.
 - Python dependencies: standard library plus Ubuntu's pinned `python3-yaml`.
 - Intended userspace: Python plus small C/libbpf loader; agent: minimal ReAct;
   local runtime: Ollama 0.40.7, installed from a SHA256-pinned official
