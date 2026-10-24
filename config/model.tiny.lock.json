@@ -1,0 +1,15 @@
+{
+  "manifest_layers": [
+    "sha256:7f4030143c1c477224c5434f8272c662a8b042079a0a584f0a27a1684fe2e1fa",
+    "sha256:ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4",
+    "sha256:d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+    "sha256:cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb",
+    "sha256:7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435"
+  ],
+  "manifest_sha256": "6f76d4346c34ba89df6e137fb661b4bb4daf322c1151b6ef0dfda981070a851f",
+  "model_tag": "qwen3:0.6b-q4_K_M",
+  "runtime": "ollama",
+  "runtime_archive_sha256": "7f082e625b4c334df84ed1558fe282d6d8091fe3545790aef30b3a9c50d44d41",
+  "runtime_asset": "ollama-linux-amd64.tar.zst",
+  "runtime_version": "0.40.7"
+}
