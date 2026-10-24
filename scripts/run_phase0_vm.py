@@ -133,6 +133,7 @@ if [ "$status" -eq 0 ]; then
     fi
 fi
 if [ "$status" -eq 0 ]; then
+    install -d -o ubuntu -g ubuntu /opt/tripwire/build
     chown -R ubuntu:ubuntu /opt/tripwire/build
     su ubuntu -s /bin/bash -c 'cd /opt/tripwire && make check && make test' > /root/acceptance.log 2>&1
     status=$?

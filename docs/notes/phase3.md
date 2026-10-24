@@ -47,7 +47,9 @@ A 4 GiB prepared-base attempt successfully reran environment discovery, then
 failed its unprivileged BPF rebuild with `mkdir: cannot create directory
 '../build': Permission denied`. The accepted base contained root-owned build
 outputs from the setup step. Setup and the guest harness now transfer `build/`
-to `ubuntu` before its check/test run. This attempt did not reach model
+to `ubuntu` before its check/test run. In the apt-independent path the base can
+also lack `build/` entirely, so the harness now creates it with the test user's
+ownership before changing existing outputs. This attempt did not reach model
 installation.
 
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
