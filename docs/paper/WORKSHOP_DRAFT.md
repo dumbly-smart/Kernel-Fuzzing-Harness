@@ -142,32 +142,50 @@ Phase 7 completes. Current hypotheses are not findings.
 
 ## 8. Related work
 
-AgentSight describes eBPF-based correlation between agent intent and system
+AgentSight [1] describes eBPF-based correlation between agent intent and system
 effects, including inspection of LLM traffic; Tripwire's current detector
 focuses on OS-only behavior and measures what remains detectable without
-application payloads. Tetragon documents eBPF observability and runtime
+application payloads. Tetragon [3] documents eBPF observability and runtime
 enforcement for process, file, and network activity. AgentDojo provides a
-dynamic benchmark for tool-agent prompt injection; integration into Tripwire
-is still TODO(verify). Host intrusion-detection work has studied mimicry
-attacks that hide malicious activity within benign process behavior; our
-attacker is currently a narrow local probe rather than a general optimizer.
+dynamic benchmark for tool-agent prompt injection [2]; integration into Tripwire
+is still TODO(verify). System-call sequence models have used short-range
+syscall correlations to characterize normal process behavior [5], and later
+work demonstrated mimicry attacks against host IDSs [6]. More recent work
+targets provenance-graph detectors [4]. Tripwire's attacker is currently a
+narrow local probe rather than a general optimizer; it does not reproduce
+those papers' attack methods or results.
 
 ## References
 
 1. Y. Zheng, Y. Hu, T. Yu, and A. Quinn, “AgentSight: System-Level
-   Observability for AI Agents Using eBPF,” arXiv:2508.02736, 2025.
-   [Paper](https://arxiv.org/abs/2508.02736). Verify publication/version and
-   bibliographic details before submission.
-2. E. Debenedetti et al., “AgentDojo: A Dynamic Environment to Evaluate
-   Prompt Injection Attacks and Defenses for LLM Agents,” NeurIPS Datasets
-   and Benchmarks, 2024, arXiv:2406.13352.
-   [Paper](https://arxiv.org/abs/2406.13352).
-3. Cilium, “Tetragon Observability Policies,” project documentation.
-   [Documentation](https://tetragon.io/docs/policy-library/observability/).
-   Record the documentation version/date at paper submission.
+   Observability for AI Agents Using eBPF,” Proceedings of the Workshop on
+   Practical Adoption Challenges of ML for Systems (PACMI 2025), pp. 110–115,
+   co-located with SOSP 2025,
+   doi: [10.1145/3766882.3767169](https://doi.org/10.1145/3766882.3767169).
+   [ACM record](https://dl.acm.org/doi/10.1145/3766882.3767169),
+   [arXiv version](https://arxiv.org/abs/2508.02736).
+2. E. Debenedetti, J. Zhang, M. Balunović, L. Beurer-Kellner, M. Fischer,
+   and F. Tramèr, “AgentDojo: A Dynamic Environment to Evaluate Prompt
+   Injection Attacks and Defenses for LLM Agents,” Advances in Neural
+   Information Processing Systems 37, Datasets and Benchmarks Track, 2024.
+   [Proceedings](https://proceedings.neurips.cc/paper_files/paper/2024/hash/97091a5177d8dc64b1da8bf3e1f6fb54-Abstract-Datasets_and_Benchmarks_Track.html),
+   [arXiv:2406.13352](https://arxiv.org/abs/2406.13352).
+3. Cilium, “Tetragon: eBPF-based Security Observability and Runtime
+   Enforcement,” project documentation, accessed 2026-10-24; source pinned to
+   release v1.7.1.
+   [Documentation](https://tetragon.io/docs/),
+   [v1.7.1 source](https://github.com/cilium/tetragon/tree/v1.7.1).
 4. A. Goyal, X. Han, G. Wang, and A. Bates, “Sometimes, You Aren't What You
    Do: Mimicry Attacks against Provenance Graph Host Intrusion Detection
-   Systems,” NDSS, 2023. [Author-hosted paper listing](https://sts.cs.illinois.edu/papers/paper/SometimesYouArentWha20230227.html).
-   Verify proceedings metadata and DOI before submission.
-5. TODO(verify): classic host-based intrusion-detection and sequence-anomaly
-   references selected for the final related-work section.
+   Systems,” NDSS 2023.
+   [NDSS paper page](https://www.ndss-symposium.org/ndss-paper/sometimes-you-arent-what-you-do-mimicry-attacks-against-provenance-graph-host-intrusion-detection-systems/).
+5. S. Forrest, S. A. Hofmeyr, A. Somayaji, and T. A. Longstaff, “A Sense of
+   Self for Unix Processes,” Proceedings of the 1996 IEEE Symposium on
+   Security and Privacy, pp. 120–128, 1996, doi:
+   [10.1109/SECPRI.1996.502675](https://doi.org/10.1109/SECPRI.1996.502675).
+   [IEEE record](https://ieeexplore.ieee.org/document/502675/).
+6. D. Wagner and P. Soto, “Mimicry Attacks on Host-Based Intrusion Detection
+   Systems,” Proceedings of the 9th ACM Conference on Computer and
+   Communications Security (CCS 2002), pp. 255–264, 2002, doi:
+   [10.1145/586110.586145](https://doi.org/10.1145/586110.586145).
+   [Author-hosted paper](https://people.eecs.berkeley.edu/~daw/papers/mimicry.pdf).

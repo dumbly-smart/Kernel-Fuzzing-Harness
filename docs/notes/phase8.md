@@ -14,8 +14,9 @@
 - `LICENSE` uses the MIT License. No AgentSight, Tetragon, or AgentDojo source
   code was copied into Tripwire.
 - `docs/paper/WORKSHOP_DRAFT.md` is the workshop paper skeleton. Verified
-  primary sources are linked; remaining citation checks are marked
-  `TODO(verify)` and all missing measurements are marked `TODO(measure)`.
+  primary sources are linked, including foundational syscall-sequence and
+  mimicry work. AgentDojo integration feasibility and all missing measurements
+  remain marked for follow-up rather than reported as completed.
 
 ## Acceptance status
 
