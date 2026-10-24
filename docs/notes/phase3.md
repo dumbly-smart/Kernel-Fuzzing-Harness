@@ -34,6 +34,15 @@ check showed the service was responding, so version verification now reads the
 server's `/api/version` JSON field, which checks the process actually serving
 requests. No model pull or corpus run occurred in this attempt either.
 
+Two retries based on that intermediate guest were stopped before a result
+handoff when host memory fell below 250 MiB and the host's 4 GiB swap was full;
+their disposable overlays are preserved under `data/vm/guest-phase3c.qcow2`
+and `guest-phase3d.qcow2`. Neither produced a result marker, so neither is an
+acceptance run and no model/corpus measurements are inferred from them. The
+next attempt uses a 4 GiB guest allocation to preserve host headroom. If the
+8B model cannot load there, its concrete Ollama error and all 90 run outcomes
+will be retained rather than silently changing the model.
+
 Official pin source: <https://github.com/ollama/ollama/releases/expanded_assets/v0.40.7>.
 
 ## Acceptance
