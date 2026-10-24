@@ -90,6 +90,10 @@ def main():
                         help="install the pinned local model and run all benign corpus seeds")
     parser.add_argument("--phase5", action="store_true",
                         help="run the local injection suite against a provisioned model guest")
+    parser.add_argument("--phase6", action="store_true",
+                        help="run naive and adaptive local mimicry attacks against the monitor")
+    parser.add_argument("--phase7", action="store_true",
+                        help="run detector, ablation, taxonomy and plot evaluation on saved guest data")
     parser.add_argument("--phase3-model-config", default="config/model.json",
                         help="profile used by Phase 3 (paired model lock selected automatically)")
     parser.add_argument("--phase5-model-config", default="config/model.json",
@@ -114,8 +118,8 @@ def main():
         parser.error("phase5-model-config must be an existing config/*.json path")
     phase5_model_lock = phase5_model_config.with_name(
         f"{phase5_model_config.stem}.lock.json")
-    if options.phase5 and not reuse_provisioned_base:
-        parser.error("--phase5 requires --reuse-provisioned-base on a model-installed corpus guest")
+    if (options.phase5 or options.phase6 or options.phase7) and not reuse_provisioned_base:
+        parser.error("--phase5/--phase6/--phase7 requires --reuse-provisioned-base on a provisioned corpus guest")
     if options.phase3 and options.phase5 and phase3_model_config != phase5_model_config:
         parser.error("one VM run cannot install and evaluate two different model profiles")
     if isinstance(options.timeout_seconds, bool) or options.timeout_seconds <= 0:
@@ -183,6 +187,14 @@ if [ "$status" -eq 0 ] && [ "PHASE5" = "true" ]; then
     MODEL_CONFIG=/opt/tripwire/PHASE5_MODEL_CONFIG RUN_DIR=/opt/tripwire/data/injection-corpus bash /opt/tripwire/scripts/smoke_injections.sh > /root/phase5-injections.log 2>&1
     status=$?
 fi
+if [ "$status" -eq 0 ] && [ "PHASE6" = "true" ]; then
+    RUN_DIR=/opt/tripwire/data/mimicry-corpus bash /opt/tripwire/scripts/smoke_mimicry.sh > /root/phase6-mimicry.log 2>&1
+    status=$?
+fi
+if [ "$status" -eq 0 ] && [ "PHASE7" = "true" ]; then
+    ATTACK_DIR=/opt/tripwire/data/injection-corpus make -C /opt/tripwire eval-all > /root/phase7-eval.log 2>&1
+    status=$?
+fi
 python3 - "$status" <<'RESULT'
 import base64, json, pathlib, sys
 files = {}
@@ -231,7 +243,33 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase5-sink.log': '/opt/tripwire/data/injection-corpus/sink.log',
                    'phase5-loader.log': '/opt/tripwire/data/injection-corpus/loader.log',
                    'phase5-join.log': '/opt/tripwire/data/injection-corpus/join.log',
-                   'phase5-detector-eval.log': '/opt/tripwire/data/injection-corpus/detector-eval.log'}.items():
+                   'phase5-detector-eval.log': '/opt/tripwire/data/injection-corpus/detector-eval.log',
+                   'phase6-mimicry.log': '/root/phase6-mimicry.log',
+                   'phase6-manifest.json': '/opt/tripwire/data/mimicry-corpus/manifest.json',
+                   'phase6-runs.jsonl': '/opt/tripwire/data/mimicry-corpus/runs.jsonl',
+                   'phase6-calls.jsonl': '/opt/tripwire/data/mimicry-corpus/calls.jsonl',
+                   'phase6-events.jsonl': '/opt/tripwire/data/mimicry-corpus/events.jsonl',
+                   'phase6-joined.jsonl': '/opt/tripwire/data/mimicry-corpus/joined.jsonl',
+                   'phase6-join-report.json': '/opt/tripwire/data/mimicry-corpus/join-report.json',
+                   'phase6-canary-receipts.jsonl': '/opt/tripwire/data/mimicry-corpus/canary-receipts.jsonl',
+                   'phase6-detector-results.json': '/opt/tripwire/data/mimicry-corpus/detector-eval/results.json',
+                   'phase6-detector-scores.jsonl': '/opt/tripwire/data/mimicry-corpus/detector-eval/scores.jsonl',
+                   'phase6-false-positives.jsonl': '/opt/tripwire/data/mimicry-corpus/detector-eval/false-positives.jsonl',
+                   'phase6-attack-verdicts.jsonl': '/opt/tripwire/data/mimicry-corpus/detector-eval/attack-verdicts.jsonl',
+                   'phase6-summary.json': '/opt/tripwire/data/mimicry-corpus/mimicry-summary.json',
+                   'phase6-egress-lockdown.log': '/opt/tripwire/data/mimicry-corpus/egress-lockdown.log',
+                   'phase6-loader.log': '/opt/tripwire/data/mimicry-corpus/loader.log',
+                   'phase6-sink.log': '/opt/tripwire/data/mimicry-corpus/sink.log',
+                   'phase6-runner.log': '/opt/tripwire/data/mimicry-corpus/runner.log',
+                   'phase6-join.log': '/opt/tripwire/data/mimicry-corpus/join.log',
+                   'phase6-detector-eval.log': '/opt/tripwire/data/mimicry-corpus/detector-eval.log',
+                   'phase7-eval.log': '/root/phase7-eval.log',
+                   'phase7-detector-results.json': '/opt/tripwire/data/injection-corpus/detector-eval/results.json',
+                   'phase7-ablation-results.json': '/opt/tripwire/data/injection-corpus/ablation-eval/results.json',
+                   'phase7-ablation-false-positives.jsonl': '/opt/tripwire/data/injection-corpus/ablation-eval/false-positives.jsonl',
+                   'phase7-ablation-attack-verdicts.jsonl': '/opt/tripwire/data/injection-corpus/ablation-eval/attack-verdicts.jsonl',
+                   'phase7-taxonomy-results.json': '/opt/tripwire/data/injection-corpus/taxonomy-results.json',
+                   'phase7-ablation-plot.svg': '/opt/tripwire/data/injection-corpus/ablation-eval/ablation-tpr.svg'}.items():
     if pathlib.Path(path).exists():
         files[name] = pathlib.Path(path).read_text()
 payload = base64.b64encode(json.dumps({'status': int(sys.argv[1]), 'files': files}).encode()).decode()
@@ -251,6 +289,10 @@ systemctl poweroff
     guest_script = guest_script.replace('PHASE5_MODEL_CONFIG', str(phase5_model_config))
     guest_script = guest_script.replace('"PHASE5" = "true"',
                                         f'"{str(options.phase5).lower()}" = "true"')
+    guest_script = guest_script.replace('"PHASE6" = "true"',
+                                        f'"{str(options.phase6).lower()}" = "true"')
+    guest_script = guest_script.replace('"PHASE7" = "true"',
+                                        f'"{str(options.phase7).lower()}" = "true"')
     unit = '[Unit]\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nExecStart=/root/accept.sh\nTimeoutStartSec=infinity\n[Install]\nWantedBy=multi-user.target\n'
     # JSON is valid YAML; avoid a host PyYAML dependency.
     config = {'package_update': False, 'package_upgrade': False,
@@ -283,6 +325,7 @@ systemctl poweroff
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
                   'memory_mib': memory_mib, 'disk_gib': disk_gib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,
+                  'phase5': options.phase5, 'phase6': options.phase6, 'phase7': options.phase7,
                   'reuse_provisioned_base': reuse_provisioned_base,
                   'qemu_arguments': qemu_args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}
     (VM / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n')
@@ -327,7 +370,19 @@ systemctl poweroff
                  'phase5-prompt-classifier.json', 'phase5-detector-results.json',
                  'phase5-detector-scores.jsonl', 'phase5-false-positives.jsonl',
                  'phase5-attack-verdicts.jsonl', 'phase5-runner.log', 'phase5-sink.log',
-                 'phase5-loader.log', 'phase5-join.log', 'phase5-detector-eval.log'):
+                 'phase5-loader.log', 'phase5-join.log', 'phase5-detector-eval.log',
+                 'phase6-mimicry.log', 'phase6-manifest.json', 'phase6-runs.jsonl',
+                 'phase6-calls.jsonl', 'phase6-events.jsonl', 'phase6-joined.jsonl',
+                 'phase6-join-report.json', 'phase6-canary-receipts.jsonl',
+                 'phase6-detector-results.json', 'phase6-detector-scores.jsonl',
+                 'phase6-false-positives.jsonl', 'phase6-attack-verdicts.jsonl',
+                 'phase6-summary.json', 'phase6-egress-lockdown.log',
+                 'phase6-loader.log', 'phase6-sink.log', 'phase6-runner.log',
+                 'phase6-join.log', 'phase6-detector-eval.log', 'phase7-eval.log',
+                 'phase7-detector-results.json', 'phase7-ablation-results.json',
+                 'phase7-ablation-false-positives.jsonl',
+                 'phase7-ablation-attack-verdicts.jsonl', 'phase7-taxonomy-results.json',
+                 'phase7-ablation-plot.svg'):
         if name in result['files']:
             (VM / name).write_text(result['files'][name])
     if 'phase3-model-lock.json' in result['files']:

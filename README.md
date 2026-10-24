@@ -161,6 +161,39 @@ the disposable guest or ignored `data/vm/` output. See
 [Phase 5 notes](docs/notes/phase5.md) for the exact measurement procedure and
 current acceptance state.
 
+## Phase 6 adaptive mimicry
+
+The deterministic attacker runs two fake-canary actions against a loopback
+fixture: a shell-based naive request and an adaptive request that uses the
+benign fetch task's single `http_get` call and carries the canary in its query.
+The sink logs only the synthetic `TRIPWIRE-FAKE-CANARY-*` value. The adaptive
+request uses the same fixed guest-loopback port recorded in
+[`config/lab.json`](config/lab.json), so host-and-port allowlist features stay
+comparable across corpus and attack runs. The attacker uses no model and makes
+no claim about model hijack rates.
+
+On a provisioned guest containing `data/phase3-corpus`, run:
+
+```sh
+TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
+  --base-disk-name guest-phase3-corpus.qcow2 --reuse-provisioned-base \
+  --memory-mib 2048 --disk-gib 24 --phase6
+```
+
+The smoke target trains/calibrates on the benign corpus and reports detection
+for both attacker knowledge modes at the configured FPR targets. Details and
+the limits of this proxy are in [Phase 6 notes](docs/notes/phase6.md).
+
+## Phase 7 taxonomy and ablations
+
+After a successful Phase 3 corpus and Phase 5 injection run, execute
+`ATTACK_DIR=data/injection-corpus make eval-all` inside the provisioned guest.
+This writes per-feature TPR/FPR metrics, false-positive causes, trace-backed
+taxonomy evidence, and an SVG under `data/injection-corpus/`. The combined
+score rule and feature groups are explicit in `config/ablations.json`. Cases
+without successful goals or calibrated verdicts remain pending; see
+[the taxonomy rules](docs/taxonomy.md) and [Phase 7 notes](docs/notes/phase7.md).
+
 
 ## Phase 0 acceptance
 

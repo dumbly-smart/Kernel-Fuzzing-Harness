@@ -1,0 +1,5 @@
+{
+  "feature_sets": ["files", "network", "process", "sequence", "combined"],
+  "combined_score": "arithmetic_mean_of_allowlist_and_sequence_novelty",
+  "notes": "Per-family allowlist scores use only that family's fields; sequence-only uses n-gram novelty. All features are collected by the OS tracer."
+}
