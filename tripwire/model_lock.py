@@ -16,6 +16,7 @@ def validate_model_lock(config: dict[str, Any], lock: Any) -> dict[str, Any]:
     expected = {
         "runtime": config.get("runtime"),
         "runtime_version": config.get("runtime_version"),
+        "runtime_asset": config.get("runtime_linux_amd64_asset"),
         "runtime_archive_sha256": config.get("runtime_linux_amd64_sha256"),
         "model_tag": config.get("model"),
     }

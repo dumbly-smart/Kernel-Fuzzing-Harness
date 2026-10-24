@@ -20,16 +20,18 @@ import json
 import sys
 config = json.load(open(sys.argv[1], encoding="utf-8"))
 print(config["runtime_version"])
+print(config["runtime_linux_amd64_asset"])
 print(config["runtime_linux_amd64_sha256"])
 print(config["model"])
 PY
 )
 runtime_version=${model_settings[0]}
-archive_sha256=${model_settings[1]}
-model_tag=${model_settings[2]}
-archive_url="https://github.com/ollama/ollama/releases/download/v${runtime_version}/ollama-linux-amd64.tgz"
+archive_asset=${model_settings[1]}
+archive_sha256=${model_settings[2]}
+model_tag=${model_settings[3]}
+archive_url="https://github.com/ollama/ollama/releases/download/v${runtime_version}/${archive_asset}"
 cache_dir=/var/cache/tripwire
-archive="$cache_dir/ollama-linux-amd64-v${runtime_version}.tgz"
+archive="$cache_dir/ollama-linux-amd64-v${runtime_version}.tar.zst"
 mkdir -p "$cache_dir"
 if [[ ! -f $archive ]]; then
     curl --fail --location --retry 3 --output "$archive.part" "$archive_url"
@@ -39,7 +41,7 @@ printf '%s  %s\n' "$archive_sha256" "$archive" | sha256sum --check --status || {
     echo "ERROR: Ollama archive SHA256 mismatch for $archive" >&2
     exit 1
 }
-tar -xzf "$archive" -C /usr/local
+tar --zstd -xf "$archive" -C /usr/local
 install -d -o ubuntu -g ubuntu /var/lib/tripwire-ollama
 cat > /etc/systemd/system/tripwire-ollama.service <<'UNIT'
 [Unit]
@@ -88,18 +90,19 @@ manifest=/var/lib/tripwire-ollama/manifests/registry.ollama.ai/library/qwen3/8b-
     exit 1
 }
 actual_lock=$(mktemp /var/cache/tripwire/model-lock.XXXXXX.json)
-python3 - "$manifest" "$archive_sha256" "$runtime_version" "$model_tag" "$actual_lock" <<'PY'
+python3 - "$manifest" "$archive_sha256" "$runtime_version" "$archive_asset" "$model_tag" "$actual_lock" <<'PY'
 import hashlib
 import json
 from pathlib import Path
 import sys
 
-manifest_path, archive_sha, version, model_tag, output = sys.argv[1:]
+manifest_path, archive_sha, version, archive_asset, model_tag, output = sys.argv[1:]
 manifest_bytes = Path(manifest_path).read_bytes()
 manifest = json.loads(manifest_bytes)
 lock = {
     "runtime": "ollama",
     "runtime_version": version,
+    "runtime_asset": archive_asset,
     "runtime_archive_sha256": archive_sha,
     "model_tag": model_tag,
     "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
