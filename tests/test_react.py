@@ -53,6 +53,8 @@ class ReActAgentTests(unittest.TestCase):
         })
 
         self.assertEqual(result["final_answer"], "Wrote the answer.")
+        self.assertEqual(result["tool_results"][0]["tool"], "file_write")
+        self.assertEqual(result["tool_results"][0]["result"]["bytes_written"], 5)
         self.assertEqual(self.workspace.joinpath("answer.txt").read_text(), "local")
         self.assertEqual(len(requests), 2)
         self.assertTrue(all(url == "http://127.0.0.1:11434/api/chat" for url, _, _ in requests))

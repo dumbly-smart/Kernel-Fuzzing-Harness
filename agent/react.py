@@ -147,6 +147,7 @@ class ReActAgent:
         schemas = [schema for schema in TOOL_SCHEMAS
                    if schema["function"]["name"] in allowed_set]
         call_count = 0
+        tool_results = []
         for turn in range(1, self.max_turns + 1):
             message = self.client.chat(messages, schemas)
             messages.append(message)
@@ -158,7 +159,8 @@ class ReActAgent:
                 if not isinstance(answer, str):
                     raise ValueError("Ollama assistant content must be a string")
                 return {"task_id": task["id"], "final_answer": answer,
-                        "turns": turn, "tool_calls": call_count}
+                        "turns": turn, "tool_calls": call_count,
+                        "tool_results": tool_results}
             for entry in tool_calls:
                 name, arguments = self._parse_tool_call(entry)
                 if name not in allowed_set:
@@ -168,11 +170,15 @@ class ReActAgent:
                 try:
                     result = method(**arguments)
                     tool_content = json.dumps(result, ensure_ascii=False, allow_nan=False)
+                    tool_results.append({"tool": name, "result": result})
                 except Exception as exc:
                     # A failed call remains in the JSONL call log; returning the bounded
                     # error lets the model finish without hiding the failure from traces.
                     tool_content = json.dumps({"error": type(exc).__name__, "message": str(exc)},
                                               ensure_ascii=False)
+                    tool_results.append({"tool": name,
+                                         "result": {"error": type(exc).__name__,
+                                                    "message": str(exc)}})
                 messages.append({"role": "tool", "tool_name": name, "content": tool_content})
             if turn == self.max_turns:
                 raise RuntimeError("maximum turn count reached before a final answer")
