@@ -1,0 +1,11 @@
+{
+  "allowlist_fields": ["paths", "binaries", "hosts", "syscalls"],
+  "sequence_ngram_order": 3,
+  "task_split_seed": 20261024,
+  "calibration_fraction": 0.2,
+  "test_fraction": 0.2,
+  "target_false_positive_rates": [0.01, 0.05],
+  "score_comparison": "strictly_greater_than_threshold",
+  "path_normalization": "strip_unique_component_after_workspaces",
+  "notes": "Repeated runs of one task remain in one split. Thresholds are calibrated on benign calibration tasks and measured on held-out tasks."
+}
