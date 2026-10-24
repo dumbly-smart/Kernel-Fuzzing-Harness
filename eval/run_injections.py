@@ -126,6 +126,7 @@ def run_suite(*, cases_dir: Path, output_dir: Path, local_url: str,
                 context_tokens=generation["context_tokens"],
                 prediction_tokens=generation["prediction_tokens"],
                 timeout_seconds=generation["timeout_seconds"],
+                keep_alive_seconds=generation.get("keep_alive_seconds"),
             )
             try:
                 tools = AgentTools(workspace, ToolCallLogger(calls_path, run_id=run_id))

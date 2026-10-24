@@ -71,6 +71,7 @@ def run_corpus(*, task_dir: Path, output_dir: Path, seeds: list[int],
                         context_tokens=generation["context_tokens"],
                         prediction_tokens=generation["prediction_tokens"],
                         timeout_seconds=generation["timeout_seconds"],
+                        keep_alive_seconds=generation.get("keep_alive_seconds"),
                     )
                     logger = ToolCallLogger(output_dir / "calls.jsonl", run_id=run_id)
                     agent_tools = AgentTools(workspace, logger)

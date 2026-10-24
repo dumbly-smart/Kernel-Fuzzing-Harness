@@ -45,8 +45,16 @@ tasks succeeded, so it is not a usable corpus. A 3072 MiB swap request on the
 device`. Bootstrap now fails immediately on swap setup errors and confirms that
 at least one swap device is active before proceeding.
 
-The next measured attempt will increase the disposable guest disk to 16 GiB and
-use 1024 MiB RAM plus 3072 MiB swap, for a 4 GiB guest memory-plus-swap budget.
-Treat RAM, swap, and disk size as explicit environment parameters; each is
-recorded in VM provenance. Keep Phase 3 acceptance pending until all 90 runs
+A 1024 MiB RAM plus 3072 MiB active swap run on a 16 GiB guest disk still
+OOM-killed the model at 750712 kB anonymous RSS after three tasks succeeded;
+the remaining records mostly captured model connection failures. This is not a
+usable corpus.
+
+The tiny profile now sets Ollama `keep_alive_seconds` to zero, which requests
+that Ollama unload the model after each chat response. This runtime hypothesis
+may add load latency and does not guarantee that one inference fits in memory.
+The setting is passed by both evaluation runners and appears in each run's
+generation provenance. Other model profiles leave it unset. The next measured
+attempt will repeat the 1024 MiB RAM plus 3072 MiB swap configuration on the
+16 GiB disposable guest disk. Keep Phase 3 acceptance pending until all 90 runs
 have actual model responses and the trace summary is reviewed.

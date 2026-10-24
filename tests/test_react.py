@@ -62,6 +62,22 @@ class ReActAgentTests(unittest.TestCase):
         self.assertEqual(requests[0][1]["stream"], False)
         self.assertEqual(json.loads(self.call_log.read_text().splitlines()[0])["tool"], "file_write")
 
+    def test_passes_configured_model_keep_alive_to_ollama_chat(self):
+        requests = []
+        client = OllamaClient(
+            transport=lambda url, payload, timeout: requests.append(payload) or assistant("ok"),
+            keep_alive_seconds=0,
+        )
+
+        client.chat([], [])
+
+        self.assertEqual(requests[0]["keep_alive"], 0)
+
+    def test_rejects_invalid_model_keep_alive(self):
+        for value in (-1, True, 1.5, "0"):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "keep_alive_seconds"):
+                OllamaClient(keep_alive_seconds=value)
+
     def test_rejects_external_ollama_endpoint(self):
         with self.assertRaisesRegex(ValueError, "loopback"):
             OllamaClient(base_url="http://example.com:11434")

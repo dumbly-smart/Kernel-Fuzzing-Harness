@@ -44,6 +44,7 @@ class OllamaClient:
                  temperature: float = 0.0, context_tokens: int = 2048,
                  prediction_tokens: int = 512,
                  timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
+                 keep_alive_seconds: int | None = None,
                  transport: Callable[[str, dict[str, Any], int], dict[str, Any]] | None = None):
         if not isinstance(model, str) or not model:
             raise ValueError("model must be a non-empty string")
@@ -54,6 +55,12 @@ class OllamaClient:
         if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0
                for value in (context_tokens, prediction_tokens, timeout_seconds)):
             raise ValueError("context, prediction, and timeout limits must be positive integers")
+        if keep_alive_seconds is not None and (
+            isinstance(keep_alive_seconds, bool)
+            or not isinstance(keep_alive_seconds, int)
+            or keep_alive_seconds < 0
+        ):
+            raise ValueError("keep_alive_seconds must be a non-negative integer or None")
         self.url = _validate_loopback_base_url(base_url)
         self.model = model
         self.options = {
@@ -63,6 +70,7 @@ class OllamaClient:
             "num_predict": prediction_tokens,
         }
         self.timeout_seconds = timeout_seconds
+        self.keep_alive_seconds = keep_alive_seconds
         self._transport = transport or self._request
 
     @staticmethod
@@ -90,6 +98,10 @@ class OllamaClient:
             "stream": False,
             "options": self.options,
         }
+        # Ollama's keep_alive is request-scoped; zero asks the local runtime to
+        # unload after this response and can reduce memory pressure between runs.
+        if self.keep_alive_seconds is not None:
+            payload["keep_alive"] = self.keep_alive_seconds
         response = self._transport(self.url, payload, self.timeout_seconds)
         if not isinstance(response, dict) or not isinstance(response.get("message"), dict):
             raise ValueError("Ollama response must contain a message object")
