@@ -55,6 +55,18 @@ that Ollama unload the model after each chat response. This runtime hypothesis
 may add load latency and does not guarantee that one inference fits in memory.
 The setting is passed by both evaluation runners and appears in each run's
 generation provenance. Other model profiles leave it unset. The next measured
-attempt will repeat the 1024 MiB RAM plus 3072 MiB swap configuration on the
-16 GiB disposable guest disk. Keep Phase 3 acceptance pending until all 90 runs
-have actual model responses and the trace summary is reviewed.
+attempt repeated the 1024 MiB RAM plus 3072 MiB swap configuration on the
+16 GiB disposable guest disk, but the host sent QEMU signal 15 after about 47
+minutes. The exact host log was `qemu-system-x86_64: terminating on signal 15
+from pid 912 (/usr/lib/systemd/systemd)`. No Tripwire result marker was
+returned, so this is an interrupted attempt and its partial guest data is not
+counted as corpus evidence.
+
+Two higher-RAM retries stopped on the host headroom guard, not in the guest:
+2048 MiB RAM plus 2048 MiB swap stopped at `MemAvailable=3462 MiB` (required
+4096 MiB), and 1536 MiB RAM plus 3072 MiB swap stopped at
+`MemAvailable=3063 MiB` (required 3072 MiB). The runner and its 2x-RAM guard
+remain unchanged. A detached 1024 MiB RAM plus 3072 MiB swap run is now active
+on a fresh overlay to avoid tying the long run's lifetime to the interactive
+command session. Acceptance remains pending until it returns all 90 model
+responses and the trace summary is reviewed.
