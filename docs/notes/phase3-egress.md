@@ -66,7 +66,19 @@ Two higher-RAM retries stopped on the host headroom guard, not in the guest:
 2048 MiB RAM plus 2048 MiB swap stopped at `MemAvailable=3462 MiB` (required
 4096 MiB), and 1536 MiB RAM plus 3072 MiB swap stopped at
 `MemAvailable=3063 MiB` (required 3072 MiB). The runner and its 2x-RAM guard
-remain unchanged. A detached 1024 MiB RAM plus 3072 MiB swap run is now active
-on a fresh overlay to avoid tying the long run's lifetime to the interactive
-command session. Acceptance remains pending until it returns all 90 model
-responses and the trace summary is reviewed.
+remain unchanged. A detached 1024 MiB RAM plus 3072 MiB swap retry reached
+`tripwire-phase0.service`, but after 5h42m its overlay was only 90 MiB and the
+guest serial had no result marker. Host TCP diagnostics showed an idle GitHub
+connection in `LAST-ACK` and an `ESTAB` connection with retransmissions; the
+guest had not returned its model-install log, so this is an infrastructure
+stall, not a model or task failure. The run was stopped and its overlay kept.
+
+The prior failed-run overlay contains the pinned Ollama 0.40.7 archive and a
+complete Qwen3 model pull; its exported `model-install.log` reports each layer
+at 100% and ends with the expected model tag. `install_local_model.sh` now
+checks that the cached manifest matches the configured SHA256 lock and that
+all referenced blobs are present before skipping `ollama pull`. Incomplete or
+unmatched caches still follow the normal pull-and-verify path. The next run
+will use a fresh overlay backed by that preserved model guest. Phase 3 remains
+unaccepted until all 90 runs return model responses and the trace summary is
+reviewed.

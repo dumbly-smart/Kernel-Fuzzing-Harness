@@ -44,6 +44,16 @@ model_tag=${model_settings[3]}
     echo "ERROR: unsupported unsafe Ollama model tag: $model_tag" >&2
     exit 1
 }
+models_dir=/var/lib/tripwire-ollama
+manifest="$models_dir/manifests/registry.ollama.ai/library/${model_tag/:/\/}"
+lock_name=$(python3 - "$model_config" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+print(p.with_name(f"{p.stem}.lock.json"))
+PY
+)
+lock_path="$repo_dir/$lock_name"
 archive_url="https://github.com/ollama/ollama/releases/download/v${runtime_version}/${archive_asset}"
 cache_dir=/var/cache/tripwire
 archive="$cache_dir/ollama-linux-amd64-v${runtime_version}.tar.zst"
@@ -57,7 +67,7 @@ printf '%s  %s\n' "$archive_sha256" "$archive" | sha256sum --check --status || {
     exit 1
 }
 tar --zstd -xf "$archive" -C /usr/local
-install -d -o ubuntu -g ubuntu /var/lib/tripwire-ollama
+install -d -o ubuntu -g ubuntu "$models_dir"
 cat > /etc/systemd/system/tripwire-ollama.service <<'UNIT'
 [Unit]
 Description=Tripwire local-only Ollama model service
@@ -98,9 +108,28 @@ version=$(python3 -c 'import json,sys; print(json.loads(sys.stdin.read())["versi
     echo "ERROR: expected Ollama $runtime_version, got: $version" >&2
     exit 1
 }
-sudo -u ubuntu env OLLAMA_HOST=127.0.0.1:11434 /usr/local/bin/ollama pull "$model_tag"
+if PYTHONPATH="$repo_dir" python3 - "$repo_dir/$model_config" "$lock_path" "$manifest" "$models_dir" <<'PY'
+import json
+from pathlib import Path
+import sys
 
-manifest="/var/lib/tripwire-ollama/manifests/registry.ollama.ai/library/${model_tag/:/\/}"
+from tripwire.model_lock import cached_model_is_complete, validate_model_lock
+
+config_path, lock_path, manifest_path, models_dir = map(Path, sys.argv[1:])
+try:
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    lock = validate_model_lock(
+        config, json.loads(lock_path.read_text(encoding="utf-8")))
+except (OSError, json.JSONDecodeError, ValueError):
+    raise SystemExit(1)
+raise SystemExit(0 if cached_model_is_complete(manifest_path, models_dir, lock) else 1)
+PY
+then
+    echo "Using complete cached Ollama model verified against $lock_path"
+else
+    sudo -u ubuntu env OLLAMA_HOST=127.0.0.1:11434 /usr/local/bin/ollama pull "$model_tag"
+fi
+
 [[ -s $manifest ]] || {
     echo "ERROR: Ollama model manifest missing at $manifest" >&2
     exit 1
@@ -126,14 +155,6 @@ lock = {
 }
 Path(output).write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
-lock_name=$(python3 - "$model_config" <<'PY'
-from pathlib import Path
-import sys
-p = Path(sys.argv[1])
-print(p.with_name(f"{p.stem}.lock.json"))
-PY
-)
-lock_path="$repo_dir/$lock_name"
 if (( record_lock )); then
     install -m 0644 "$actual_lock" "$lock_path"
     echo "Recorded local model lock: $lock_path"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -40,3 +42,32 @@ def validate_model_lock(config: dict[str, Any], lock: Any) -> dict[str, Any]:
                 for layer in layers)):
         raise ValueError("model lock must contain SHA256 manifest layer digests")
     return lock
+
+
+def cached_model_is_complete(manifest_path: Path, models_directory: Path,
+                             lock: dict[str, Any]) -> bool:
+    """Check pinned manifest bytes and every referenced Ollama blob before reuse."""
+    manifest_path = Path(manifest_path)
+    models_directory = Path(models_directory)
+    try:
+        manifest_bytes = manifest_path.read_bytes()
+        manifest = json.loads(manifest_bytes)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(manifest, dict):
+        return False
+    layers = manifest.get("layers")
+    if not isinstance(layers, list):
+        return False
+    digests = [layer.get("digest") if isinstance(layer, dict) else None
+               for layer in layers]
+    if (hashlib.sha256(manifest_bytes).hexdigest() != lock.get("manifest_sha256") or
+            digests != lock.get("manifest_layers")):
+        return False
+    for digest in digests:
+        if not isinstance(digest, str) or not _LAYER_DIGEST.fullmatch(digest):
+            return False
+        blob = models_directory / "blobs" / f"sha256-{digest.removeprefix('sha256:')}"
+        if blob.is_symlink() or not blob.is_file() or blob.stat().st_size == 0:
+            return False
+    return bool(digests)
