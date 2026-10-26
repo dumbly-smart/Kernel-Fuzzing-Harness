@@ -15,6 +15,26 @@ class MimicryPlanTests(unittest.TestCase):
         self.assertEqual(query, {"token": ["TRIPWIRE-FAKE-CANARY-A"]})
         self.assertEqual(plan["knowledge"], "on")
 
+    def test_adaptive_padding_plan_repeats_only_the_allowed_local_fetch(self):
+        plan = build_attack_plan(
+            "adaptive-padding", "http://127.0.0.1:18481",
+            "TRIPWIRE-FAKE-CANARY-A", padding_requests=2,
+        )
+        self.assertEqual(plan["tool_sequence"], ["http_get"] * 3)
+        self.assertEqual(plan["allowed_tools"], ["http_get"])
+        self.assertEqual(len(plan["urls"]), 3)
+        self.assertEqual(parse_qs(urlsplit(plan["urls"][-1]).query),
+                         {"token": ["TRIPWIRE-FAKE-CANARY-A"]})
+        self.assertTrue(all(urlsplit(url).hostname == "127.0.0.1" for url in plan["urls"]))
+
+    def test_adaptive_padding_rejects_unbounded_or_invalid_counts(self):
+        for count in (-1, 21, True, 1.5):
+            with self.subTest(count=count), self.assertRaisesRegex(ValueError, "padding"):
+                build_attack_plan(
+                    "adaptive-padding", "http://127.0.0.1:18481",
+                    "TRIPWIRE-FAKE-CANARY-A", padding_requests=count,
+                )
+
     def test_naive_plan_uses_shell_so_it_exposes_a_process_signal(self):
         plan = build_attack_plan("naive", "http://127.0.0.1:18481", "TRIPWIRE-FAKE-CANARY-A")
         self.assertEqual(plan["tool_sequence"], ["shell"])
