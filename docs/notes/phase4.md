@@ -39,6 +39,13 @@ agent actions.
 
 Pure-Python unit tests cover syscall classes, workspace path normalization,
 task-level splitting, baseline novelty scores, thresholds, confusion counts,
-and false-positive cause output. End-to-end `make eval-detectors` requires a
-completed Phase 3 corpus in the disposable guest; it has not yet run against
-that corpus.
+and false-positive cause output. The end-to-end evaluator was run against the
+measured tiny-profile Phase 3 corpus. It split 30 task IDs into 15 train, 5
+calibration, and 10 test tasks (45, 15, and 30 runs respectively). With no
+attack labels, TPR is correctly undefined. On the 30 benign test runs, the
+allowlist observed 0 false positives at both requested targets; the n-gram
+baseline observed 3/30 (10%) at both targets because its calibrated threshold
+was 0. These rates are coarse and confounded by the 16.7% task success rate and
+85.71% event orphan rate; they are pipeline measurements, not detector efficacy
+claims. The ignored output is in
+`data/vm/phase3-corpus-eval/detector-eval/`.

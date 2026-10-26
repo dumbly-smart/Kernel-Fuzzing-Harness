@@ -88,6 +88,7 @@ def join_events(
 
     orphan_events = []
     ambiguous_events = []
+    stats_records = 0
     for event in event_records:
         event_time = event.get("monotonic_ns")
         event_pid = event.get("pid")
@@ -95,6 +96,9 @@ def join_events(
         if any(isinstance(v, bool) or not isinstance(v, int) or v < 0
                for v in (event_time, event_pid, event_cgroup)):
             raise ValueError("event monotonic_ns, pid, and cgroup_id must be non-negative integers")
+        if event.get("type") == "stats":
+            stats_records += 1
+            continue
         matches = []
         for call_record in call_records:
             if (call_record["cgroup_id"] != event_cgroup
@@ -118,12 +122,13 @@ def join_events(
         else:
             orphan_events.append(event)
 
-    event_count = len(event_records)
+    event_count = len(event_records) - stats_records
     orphan_count = len(orphan_events)
     ambiguous_count = len(ambiguous_events)
     assigned_count = event_count - orphan_count - ambiguous_count
     metrics = {
         "event_count": event_count,
+        "stats_records": stats_records,
         "assigned_events": assigned_count,
         "orphan_events": orphan_count,
         "ambiguous_events": ambiguous_count,

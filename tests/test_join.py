@@ -35,6 +35,20 @@ def call(call_id="c1", *, start=10, end=20, pid=100, cgroup_id=700):
 
 
 class JoinEventsTests(unittest.TestCase):
+    def test_stats_records_are_reported_separately_from_orphan_behavior(self):
+        records = [
+            event("stats", 1, 5, pid=900, dropped_events=0,
+                  ring_buffer_bytes=4096, path_bytes=64, poll_interval_ms=1000),
+            event("syscall", 2, 15, syscall="openat", return_code=3),
+        ]
+
+        result = join_events(records, [call()])
+
+        self.assertEqual(result["metrics"]["stats_records"], 1)
+        self.assertEqual(result["metrics"]["event_count"], 1)
+        self.assertEqual(result["metrics"]["assigned_events"], 1)
+        self.assertEqual(result["orphan_events"], [])
+
     def test_joins_descendant_process_and_parent_fork_event(self):
         records = [
             event("process_fork", 1, 12, child_pid=101),

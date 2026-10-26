@@ -78,7 +78,9 @@ complete Qwen3 model pull; its exported `model-install.log` reports each layer
 at 100% and ends with the expected model tag. `install_local_model.sh` now
 checks that the cached manifest matches the configured SHA256 lock and that
 all referenced blobs are present before skipping `ollama pull`. Incomplete or
-unmatched caches still follow the normal pull-and-verify path. The next run
-will use a fresh overlay backed by that preserved model guest. Phase 3 remains
-unaccepted until all 90 runs return model responses and the trace summary is
-reviewed.
+unmatched caches still follow the normal pull-and-verify path. A fresh overlay
+backed by that model guest completed all 90 run records without a model
+provisioning stall. The measured 15/90 task-success rate and corrected join
+metrics are recorded in [Phase 3 notes](phase3.md); the run is not a sound broad
+behavior baseline because model utility is low and the behavioral-event orphan
+rate remains high.

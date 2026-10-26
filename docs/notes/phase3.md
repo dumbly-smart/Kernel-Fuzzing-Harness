@@ -100,8 +100,39 @@ run; MemAvailable=3035 MiB; need at least 3072 MiB (2x guest RAM)`. This
 prevented further host memory pressure, but the guest did not return a result
 bundle; this attempt also contributes no model or task measurements.
 
+## Measured tiny-profile run
+
+A fresh overlay backed by the preserved model guest completed the VM acceptance
+path with the pinned `qwen3:0.6b-q4_K_M` profile (Ollama 0.40.7, model manifest
+SHA256 `6f76d4346c34ba89df6e137fb661b4bb4daf322c1151b6ef0dfda981070a851f`).
+It produced 90 run records for 30 tasks and seeds 11, 23, and 37, with no
+runner-level exceptions. The model completed the task goal in 15/90 runs:
+edit 9/18, summarize 6/18, and fetch, search, and tests 0/18 each. Most failed
+edits attempted `file_write` with an object where the tool schema requires a
+string; fetch/search/tests mostly made no tool calls. Treat the 16.7% aggregate
+success rate as a severe utility confound. This corpus records the requested
+outcomes, but it is not a sound broad task-type benign baseline.
+
+The first join report counted tracer `stats` snapshots as orphan behavior. The
+joiner now reports these separately and computes the orphan rate over behavioral
+events only. Offline reprocessing of this run found 2,675 stats records, 1,218
+behavioral events, 174 assigned events, 1,044 orphan events (85.71%), zero
+ambiguous events, and zero dropped events. This remaining orphan rate is high;
+the corrected report and derived JSONL files are under the ignored
+`data/vm/phase3-resummarized/` directory. Recompute them with:
+
+```sh
+PYTHONPATH=. python3 eval/summarize_benign.py \
+  --events data/vm/phase3-events.jsonl \
+  --calls data/vm/phase3-calls.jsonl \
+  --runs data/vm/phase3-runs.jsonl \
+  --output-dir data/vm/phase3-resummarized
+```
+
 ## Acceptance
 
-Pending a fresh guest run. Keep the exact model manifest digest, 90 task
-outcomes, join metrics, dropped-event count, and behavior summaries with the
-acceptance artifacts; do not fill these from expected values.
+The run and required per-task summary were produced, but Phase 3 remains
+research-pending: the tiny model has poor utility and the behavior-event orphan
+rate is high. Do not use it to support attack-detection claims without clearly
+reporting these confounds. A more capable local model run is still needed for a
+representative benign corpus.
