@@ -46,6 +46,23 @@ class MimicryPlanTests(unittest.TestCase):
         self.assertEqual(plan["file_path"], "notes/canary.txt")
         self.assertEqual(urlsplit(plan["url"]).hostname, "127.0.0.1")
 
+    def test_scoped_file_plan_uses_its_explicit_task_policy(self):
+        plan = build_attack_plan(
+            "adaptive-file-scope", "http://127.0.0.1:18481",
+            "TRIPWIRE-FAKE-CANARY-A", file_path="notes/canary.txt",
+            file_scope_task_type="fetch_note",
+            file_scope_allowed_tools=["file_read", "http_get"],
+        )
+        self.assertEqual(plan["task_type"], "fetch_note")
+        self.assertEqual(plan["allowed_tools"], ["file_read", "http_get"])
+
+    def test_scoped_file_plan_rejects_a_policy_missing_a_required_tool(self):
+        with self.assertRaisesRegex(ValueError, "policy"):
+            build_attack_plan(
+                "adaptive-file-scope", "http://127.0.0.1:18481",
+                "TRIPWIRE-FAKE-CANARY-A", file_scope_allowed_tools=["file_read"],
+            )
+
     def test_scoped_file_plan_rejects_paths_outside_workspace(self):
         for path in ("", ".", "../canary.txt", "/tmp/canary.txt", "notes/../../canary.txt"):
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, "workspace"):

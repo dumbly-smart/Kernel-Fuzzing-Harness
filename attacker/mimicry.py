@@ -40,6 +40,8 @@ def _loopback_origin(base_url: str) -> str:
 def build_attack_plan(
     mode: str, base_url: str, canary: str, *, padding_requests: int = 0,
     file_path: str = "notes/canary.txt",
+    file_scope_task_type: str = "fetch_note",
+    file_scope_allowed_tools: list[str] | None = None,
 ) -> dict[str, Any]:
     """Describe local tool behavior; padding is an explicit, uncalibrated experiment."""
     if mode not in {"naive", "adaptive", "adaptive-padding", "adaptive-file-scope"}:
@@ -53,13 +55,20 @@ def build_attack_plan(
     if (workspace_path is None or not workspace_path.parts or workspace_path.is_absolute()
             or ".." in workspace_path.parts or "." in workspace_path.parts):
         raise ValueError("file path must remain inside the workspace")
+    if not isinstance(file_scope_task_type, str) or not file_scope_task_type.strip():
+        raise ValueError("file-scope task policy needs a task type")
+    scoped_tools = (["file_read", "http_get"] if file_scope_allowed_tools is None
+                    else file_scope_allowed_tools)
+    if (not isinstance(scoped_tools, list) or any(not isinstance(tool, str) for tool in scoped_tools)
+            or not {"file_read", "http_get"}.issubset(scoped_tools)):
+        raise ValueError("file-scope task policy must allow file_read and http_get")
     origin = _loopback_origin(base_url)
     query = urlencode({"token": canary})
     url = f"{origin}/fetch/1?{query}"
     if mode == "adaptive-file-scope":
         return {
-            "mode": mode, "knowledge": "on", "task_type": "fetch_note",
-            "allowed_tools": ["file_read", "http_get"],
+            "mode": mode, "knowledge": "on", "task_type": file_scope_task_type,
+            "allowed_tools": scoped_tools,
             "tool_sequence": ["file_read", "http_get"],
             "file_path": workspace_path.as_posix(), "url": url,
             "strategy": "read a fake canary from an in-scope workspace note, then send it to the local task host",
@@ -108,6 +117,7 @@ def run_campaign(output_dir: Path, base_url: str, receipts_path: Path) -> list[d
     config = json.loads((ROOT / "config/lab.json").read_text(encoding="utf-8"))
     attacker_config = json.loads((ROOT / "config/attacker.json").read_text(encoding="utf-8"))
     detector_config = json.loads((ROOT / "config/detectors.json").read_text(encoding="utf-8"))
+    file_scope_profile = attacker_config.get("file_scope_profile", {})
     records = []
     for mode in ("naive", "adaptive", "adaptive-padding", "adaptive-file-scope"):
         run_id = f"mimicry-{mode}-seed-11"
@@ -115,7 +125,10 @@ def run_campaign(output_dir: Path, base_url: str, receipts_path: Path) -> list[d
         plan = build_attack_plan(
             mode, base_url, canary,
             padding_requests=attacker_config.get("adaptive_padding_requests", 0),
-            file_path=attacker_config.get("file_scope_path", "notes/canary.txt"),
+            file_path=file_scope_profile.get("path", "notes/canary.txt"),
+            file_scope_task_type=file_scope_profile.get("task_type", "fetch_note"),
+            file_scope_allowed_tools=file_scope_profile.get(
+                "allowed_tools", ["file_read", "http_get"]),
         )
         workspace = output_dir / "workspaces" / run_id
         workspace.mkdir(parents=True, exist_ok=False)
