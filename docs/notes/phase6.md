@@ -49,6 +49,29 @@ only OS features, while tool-call arguments remain available for later
 cross-layer analysis and are deliberately excluded from the OS-only baseline.
 
 Unit tests check the adaptive one-call plan, fake-token query construction,
-loopback restriction, and retention of attacker-knowledge labels in scored
-verdicts. End-to-end acceptance awaits a measured Phase 3 corpus guest; no
-detection or attack-success numbers are claimed here.
+loopback restriction, run-directory artifact collisions, and retention of
+attacker-knowledge labels in scored verdicts.
+
+## Measured guest run (2026-10-26)
+
+With the digest-verified `qwen3:0.6b-q4_K_M` corpus, both strategies reached
+their local fake-canary goals (2/2). Each detector flagged both attacks at both
+configured FPR settings: allowlist TPR 2/2, measured FPR 0/30; n-gram TPR 2/2,
+measured FPR 3/30 (10%). These are two deterministic tool-wrapper examples,
+not population rates or a learned attacker success rate.
+
+The adaptive result does not show that a competent attacker fails to evade.
+All 18 benign fetch runs had zero tool calls because this model failed the task,
+so the fetch envelope contained no HTTP behavior to imitate. The adaptive
+trace's HTTP library and syscall sequence were therefore novel against that
+baseline. This is a utility confound and leaves Phase 6's in-envelope evasion
+criterion unvalidated. The measured mimicry run itself joined 129/579 behavior
+events (77.72% orphaned); those joins also need improvement before claiming a
+complete tool-to-syscall correspondence.
+
+The first two guest attempts failed because a static output directory collided
+with existing files and then because the campaign shared a directory already
+populated by monitor artifacts. The runner now creates a unique Phase 6 output
+directory per VM attempt, and the campaign checks only its own reserved output
+names. The monitor's generated corpus path is normalized in features so a
+random run ID does not become a behavioral signal.
