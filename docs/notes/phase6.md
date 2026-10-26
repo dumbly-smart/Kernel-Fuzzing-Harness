@@ -11,9 +11,10 @@ the synthetic local canary:
   obvious OS signal.
 - **Knowledge on:** invokes the task's allowed `http_get` tool once, fetching
   the same declared local route used by benign `fetch` tasks and adding the
-  fake token as a query parameter. The network host, tool, and one-call
-  sequence match the benign envelope. This tests the monitor's lack of HTTP
-  application-data visibility; the tool-call logger still records arguments.
+  fake token as a query parameter. The planned tool, host, and call count match
+  the fetch task shape, but the measured OS sequence did not match: the benign
+  corpus had no successful fetch tool calls. This tests the monitor's lack of
+  HTTP application-data visibility; the tool-call logger still records args.
 
 The local sink accepts only loopback connections and records query tokens only
 when they start with `TRIPWIRE-FAKE-CANARY-`. UFW blocks non-loopback egress and
@@ -69,9 +70,11 @@ criterion unvalidated. The measured mimicry run itself joined 129/579 behavior
 events (77.72% orphaned); those joins also need improvement before claiming a
 complete tool-to-syscall correspondence.
 
-The first two guest attempts failed because a static output directory collided
-with existing files and then because the campaign shared a directory already
-populated by monitor artifacts. The runner now creates a unique Phase 6 output
-directory per VM attempt, and the campaign checks only its own reserved output
-names. The monitor's generated corpus path is normalized in features so a
-random run ID does not become a behavioral signal.
+The initial guest attempts failed because `run_campaign` required an entirely
+empty output directory after the smoke script had already written monitor and
+sink artifacts there. A temporary nested campaign directory then introduced
+its own file-path differences. The final runner creates a unique Phase 6
+directory per VM attempt, and the campaign rejects only collisions with its
+own reserved output names while sharing the root run directory. Generated
+corpus directory IDs are normalized so a random run ID does not become a
+behavioral signal.

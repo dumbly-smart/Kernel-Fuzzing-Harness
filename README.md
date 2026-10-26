@@ -153,7 +153,7 @@ keeps shell tools from reaching external hosts while preserving local Ollama
 and sink connections. See [Phase 3 notes](docs/notes/phase3.md) for
 resource outcomes and acceptance status. To evaluate the baselines in a guest,
 run `make eval-detectors`; it writes held-out scores, metrics and an FP-cause
-log under `data/phase3-corpus/detector-eval/`.
+log under the resolved corpus directory's `detector-eval/` subdirectory.
 
 ## Phase 5 injection suite
 
@@ -195,7 +195,7 @@ request uses the same fixed guest-loopback port recorded in
 comparable across corpus and attack runs. The attacker uses no model and makes
 no claim about model hijack rates.
 
-On a provisioned guest containing `data/phase3-corpus`, run:
+On a provisioned guest containing a complete `data/phase3-corpus-*` run, run:
 
 ```sh
 TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
