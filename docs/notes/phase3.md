@@ -136,3 +136,24 @@ research-pending: the tiny model has poor utility and the behavior-event orphan
 rate is high. Do not use it to support attack-detection claims without clearly
 reporting these confounds. A more capable local model run is still needed for a
 representative benign corpus.
+
+## 1.7B profile attempts (2026-10-26)
+
+Three additional runs used the pinned `config/model.low-memory.json` profile
+(`qwen3:1.7b`), each on a fresh overlay from the cached provisioned guest.
+None produced exported corpus results:
+
+- At 2,048 MiB RAM + 3,072 MiB guest swap, the live host guard stopped the
+  guest at `MemAvailable=4044 MiB; need at least 4096 MiB (2x guest RAM)`.
+- At 1,536 MiB RAM + 3,072 MiB guest swap, it stopped at
+  `MemAvailable=2917 MiB; need at least 3072 MiB (2x guest RAM)`.
+- At 1,024 MiB RAM + 3,072 MiB guest swap, the guest remained CPU- and
+  disk-active for 13m17s without returning a result. I stopped it when the
+  host filesystem reached 9.5 GiB free (99% used); QEMU had cumulatively
+  written 28,837,105,664 bytes and its overlay occupied 6.7 GiB. The runner
+  reported `KeyboardInterrupt` while waiting; no corpus artifact was exported.
+
+All three overlays and logs remain under ignored `data/vm/` for inspection.
+No task or attack metrics can be attributed to these runs. Further VM runs
+need stable host memory headroom and more free host storage; the measured
+0.6B corpus remains the only completed Phase 3 dataset.

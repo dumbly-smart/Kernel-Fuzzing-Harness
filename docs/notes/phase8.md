@@ -31,7 +31,9 @@ phase-specific notes for exact FPR, orphan, and ablation counts.
 `scripts/reproduce.sh` now accepts `GUEST_SWAP_MIB` so the measured 1 GiB RAM +
 3 GiB guest-swap profile can be requested explicitly. The default 8B profile
 and a clean-launcher full reproduction have not been rerun end-to-end in this
-turn. `make check` on the development host fails as designed because it is
+turn. Three attempts with the pinned 1.7B profile produced no result bundle;
+two hit the live memory guard and the 1 GiB attempt was stopped at 9.5 GiB
+free host storage (99% used). The exact readings are in `docs/notes/phase3.md`. `make check` on the development host fails as designed because it is
 Arch rather than Ubuntu 24.04 and lacks guest detection, `clang-18`,
 `bpftool`, and `dpkg-query`; the disposable guest ran its own check and tests.
 The research question therefore remains only partially answered: a capable
