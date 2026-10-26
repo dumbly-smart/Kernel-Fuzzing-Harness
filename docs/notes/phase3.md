@@ -157,3 +157,12 @@ All three overlays and logs remain under ignored `data/vm/` for inspection.
 No task or attack metrics can be attributed to these runs. Further VM runs
 need stable host memory headroom and more free host storage; the measured
 0.6B corpus remains the only completed Phase 3 dataset.
+
+## Task definitions added after the measured corpus
+
+The repository now has 33 benign task definitions, including three mixed
+fetch tasks that read `notes/brief.txt` and fetch distinct loopback routes.
+Their success checks require both tool results. The recorded 90-run corpus
+predates these additions and still covers the earlier 30-task definition set;
+do not present its metrics as measurements of the new mixed tasks. A fresh
+Phase 3 run is required to measure their success and behavior.

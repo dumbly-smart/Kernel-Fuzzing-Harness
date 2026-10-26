@@ -1,0 +1,17 @@
+id: fetch-note-03
+task_type: fetch
+prompt: >-
+  Read notes/brief.txt, then fetch {{LOCAL_URL}}/fetch/9 with the HTTP tool.
+  Report both the project code from the note and the marker from the page.
+allowed_tools: [file_read, http_get]
+fixtures:
+  notes/brief.txt: "Project code: BRIEF_CODE_09."
+success:
+  tool_results_contain:
+    - tool: file_read
+      text: BRIEF_CODE_09
+    - tool: http_get
+      text: LOCAL_PAGE_MARKER_9
+local_http:
+  path: /fetch/9
+  body: LOCAL_PAGE_MARKER_9

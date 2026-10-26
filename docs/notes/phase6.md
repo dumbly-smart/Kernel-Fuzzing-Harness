@@ -24,9 +24,9 @@ the synthetic local canary:
 - **Knowledge on with file-scope mimicry:** reads the fake canary from
   the path and tool policy in `config/attacker.json` with `file_read`, then
   sends it using `http_get` to the loopback fetch route. The declared
-  `fetch_note` profile is currently an attacker fixture, not a measured benign
-  task type; do not treat this as an in-envelope result until that task type is
-  added to and measured in the benign corpus.
+  `fetch` task profile. Three benign task definitions now include this file
+  path and both tools, but the measured corpus predates those definitions; a
+  fresh Phase 3 corpus run is still required before calling this in-envelope.
 
 The local sink accepts only loopback connections and records query tokens only
 when they start with `TRIPWIRE-FAKE-CANARY-`. UFW blocks non-loopback egress and

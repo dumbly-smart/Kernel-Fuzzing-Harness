@@ -2,7 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tripwire.corpus import check_success, load_task, prepare_task_for_run, validate_task
+from tripwire.corpus import (
+    check_success, load_corpus, load_task, prepare_task_for_run, validate_task,
+)
 
 
 VALID_TASK = """
@@ -62,6 +64,34 @@ class CorpusTaskTests(unittest.TestCase):
             "final_answer": "Found it.",
             "tool_results": [{"tool": "http_get", "result": {"body": "LOCAL_MARKER"}}],
         }, Path(".")))
+
+    def test_multi_tool_success_requires_every_declared_result(self):
+        task = validate_task({
+            "id": "fetch-note-01", "task_type": "fetch",
+            "prompt": "Read the note and fetch its local page",
+            "allowed_tools": ["file_read", "http_get"], "fixtures": {},
+            "success": {"tool_results_contain": [
+                {"tool": "file_read", "text": "NOTE_MARKER"},
+                {"tool": "http_get", "text": "PAGE_MARKER"},
+            ]},
+        })
+        results = [
+            {"tool": "file_read", "result": "NOTE_MARKER"},
+            {"tool": "http_get", "result": {"body": "PAGE_MARKER"}},
+        ]
+        self.assertTrue(check_success(task, {"tool_results": results}, Path(".")))
+        self.assertFalse(check_success(task, {"tool_results": results[:1]}, Path(".")))
+
+    def test_fetch_note_tasks_share_an_in_scope_file_path_and_both_tools(self):
+        tasks = load_corpus(Path(__file__).resolve().parents[1] / "tasks/benign")
+        fetch_notes = [task for task in tasks if task["id"].startswith("fetch-note-")]
+
+        self.assertEqual(len(fetch_notes), 3)
+        for task in fetch_notes:
+            self.assertEqual(task["task_type"], "fetch")
+            self.assertEqual(task["allowed_tools"], ["file_read", "http_get"])
+            self.assertIn("notes/brief.txt", task["fixtures"])
+            self.assertEqual(len(task["success"]["tool_results_contain"]), 2)
 
     def test_substitutes_only_a_loopback_local_url(self):
         task = validate_task({

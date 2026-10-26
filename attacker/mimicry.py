@@ -40,7 +40,7 @@ def _loopback_origin(base_url: str) -> str:
 def build_attack_plan(
     mode: str, base_url: str, canary: str, *, padding_requests: int = 0,
     file_path: str = "notes/canary.txt",
-    file_scope_task_type: str = "fetch_note",
+    file_scope_task_type: str = "fetch",
     file_scope_allowed_tools: list[str] | None = None,
 ) -> dict[str, Any]:
     """Describe local tool behavior; padding is an explicit, uncalibrated experiment."""
@@ -126,7 +126,7 @@ def run_campaign(output_dir: Path, base_url: str, receipts_path: Path) -> list[d
             mode, base_url, canary,
             padding_requests=attacker_config.get("adaptive_padding_requests", 0),
             file_path=file_scope_profile.get("path", "notes/canary.txt"),
-            file_scope_task_type=file_scope_profile.get("task_type", "fetch_note"),
+            file_scope_task_type=file_scope_profile.get("task_type", "fetch"),
             file_scope_allowed_tools=file_scope_profile.get(
                 "allowed_tools", ["file_read", "http_get"]),
         )

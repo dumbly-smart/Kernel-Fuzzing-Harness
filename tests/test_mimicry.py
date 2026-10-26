@@ -40,7 +40,7 @@ class MimicryPlanTests(unittest.TestCase):
             "adaptive-file-scope", "http://127.0.0.1:18481",
             "TRIPWIRE-FAKE-CANARY-A", file_path="notes/canary.txt",
         )
-        self.assertEqual(plan["task_type"], "fetch_note")
+        self.assertEqual(plan["task_type"], "fetch")
         self.assertEqual(plan["allowed_tools"], ["file_read", "http_get"])
         self.assertEqual(plan["tool_sequence"], ["file_read", "http_get"])
         self.assertEqual(plan["file_path"], "notes/canary.txt")
@@ -50,10 +50,10 @@ class MimicryPlanTests(unittest.TestCase):
         plan = build_attack_plan(
             "adaptive-file-scope", "http://127.0.0.1:18481",
             "TRIPWIRE-FAKE-CANARY-A", file_path="notes/canary.txt",
-            file_scope_task_type="fetch_note",
+            file_scope_task_type="fetch",
             file_scope_allowed_tools=["file_read", "http_get"],
         )
-        self.assertEqual(plan["task_type"], "fetch_note")
+        self.assertEqual(plan["task_type"], "fetch")
         self.assertEqual(plan["allowed_tools"], ["file_read", "http_get"])
 
     def test_scoped_file_plan_rejects_a_policy_missing_a_required_tool(self):

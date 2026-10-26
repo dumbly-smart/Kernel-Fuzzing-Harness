@@ -5,9 +5,9 @@
   "adaptive_tool": "http_get",
   "adaptive_padding_requests": 2,
   "file_scope_profile": {
-    "task_type": "fetch_note",
+    "task_type": "fetch",
     "allowed_tools": ["file_read", "http_get"],
-    "path": "notes/canary.txt"
+    "path": "notes/brief.txt"
   },
   "known_monitor_features": ["paths", "binaries", "hosts", "syscalls", "tool_syscall_ngrams"],
   "destination": "guest_loopback_only",

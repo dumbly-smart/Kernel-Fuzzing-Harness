@@ -13,7 +13,10 @@ import yaml
 
 TASK_TYPES = {"edit", "search", "tests", "fetch", "summarize"}
 TASK_TOOLS = {"file_read", "file_write", "shell", "http_get"}
-SUCCESS_CHECKS = {"file_exists", "file_contains", "final_contains", "tool_result_contains"}
+SUCCESS_CHECKS = {
+    "file_exists", "file_contains", "final_contains",
+    "tool_result_contains", "tool_results_contain",
+}
 
 
 def _workspace_relative(value: Any, where: str) -> str:
@@ -64,8 +67,13 @@ def validate_task(task: Any) -> dict[str, Any]:
     if not isinstance(success, dict) or len(success) != 1:
         raise ValueError(f"task {task['id']} needs exactly one success check")
     kind, check = next(iter(success.items()))
-    if kind not in SUCCESS_CHECKS or not isinstance(check, dict):
+    if kind not in SUCCESS_CHECKS:
         raise ValueError(f"task {task['id']} has unsupported success check")
+    if kind == "tool_results_contain":
+        if not isinstance(check, list) or not check:
+            raise ValueError(f"task {task['id']} tool_results_contain needs a non-empty list")
+    elif not isinstance(check, dict):
+        raise ValueError(f"task {task['id']} success check must be a mapping")
     if kind in {"file_exists", "file_contains"}:
         expected_keys = {"path"} if kind == "file_exists" else {"path", "text"}
         if set(check) != expected_keys:
@@ -77,11 +85,15 @@ def validate_task(task: Any) -> dict[str, Any]:
         if set(check) != {"text"} or not isinstance(check["text"], str) or not check["text"]:
             raise ValueError(f"task {task['id']} final_contains needs non-empty text")
     else:
-        if (set(check) != {"tool", "text"} or check["tool"] not in TASK_TOOLS or
-                not isinstance(check["text"], str) or not check["text"]):
-            raise ValueError(f"task {task['id']} tool_result_contains fields are invalid")
-        if check["tool"] not in tools:
-            raise ValueError(f"task {task['id']} success tool is not allowed")
+        checks = check if kind == "tool_results_contain" else [check]
+        for tool_check in checks:
+            if (not isinstance(tool_check, dict) or set(tool_check) != {"tool", "text"} or
+                    not isinstance(tool_check["tool"], str) or
+                    tool_check["tool"] not in TASK_TOOLS or
+                    not isinstance(tool_check["text"], str) or not tool_check["text"]):
+                raise ValueError(f"task {task['id']} tool result check fields are invalid")
+            if tool_check["tool"] not in tools:
+                raise ValueError(f"task {task['id']} success tool is not allowed")
     return task
 
 
@@ -136,9 +148,16 @@ def check_success(task: dict[str, Any], result: dict[str, Any], workspace: Path)
         return check["text"] in path.read_text(encoding="utf-8", errors="replace")
     if kind == "final_contains":
         return check["text"] in result.get("final_answer", "")
-    for item in result.get("tool_results", []):
-        if item.get("tool") == check["tool"]:
-            rendered = json.dumps(item.get("result"), ensure_ascii=False, sort_keys=True)
-            if check["text"] in rendered:
-                return True
-    return False
+    checks = check if kind == "tool_results_contain" else [check]
+    tool_results = result.get("tool_results", [])
+    for tool_check in checks:
+        found = False
+        for item in tool_results:
+            if item.get("tool") == tool_check["tool"]:
+                rendered = json.dumps(item.get("result"), ensure_ascii=False, sort_keys=True)
+                if tool_check["text"] in rendered:
+                    found = True
+                    break
+        if not found:
+            return False
+    return True
