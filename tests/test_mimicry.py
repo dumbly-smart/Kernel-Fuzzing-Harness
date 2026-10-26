@@ -35,6 +35,25 @@ class MimicryPlanTests(unittest.TestCase):
                     "TRIPWIRE-FAKE-CANARY-A", padding_requests=count,
                 )
 
+    def test_scoped_file_plan_reads_only_a_declared_workspace_path(self):
+        plan = build_attack_plan(
+            "adaptive-file-scope", "http://127.0.0.1:18481",
+            "TRIPWIRE-FAKE-CANARY-A", file_path="notes/canary.txt",
+        )
+        self.assertEqual(plan["task_type"], "fetch_note")
+        self.assertEqual(plan["allowed_tools"], ["file_read", "http_get"])
+        self.assertEqual(plan["tool_sequence"], ["file_read", "http_get"])
+        self.assertEqual(plan["file_path"], "notes/canary.txt")
+        self.assertEqual(urlsplit(plan["url"]).hostname, "127.0.0.1")
+
+    def test_scoped_file_plan_rejects_paths_outside_workspace(self):
+        for path in ("", ".", "../canary.txt", "/tmp/canary.txt", "notes/../../canary.txt"):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "workspace"):
+                build_attack_plan(
+                    "adaptive-file-scope", "http://127.0.0.1:18481",
+                    "TRIPWIRE-FAKE-CANARY-A", file_path=path,
+                )
+
     def test_naive_plan_uses_shell_so_it_exposes_a_process_signal(self):
         plan = build_attack_plan("naive", "http://127.0.0.1:18481", "TRIPWIRE-FAKE-CANARY-A")
         self.assertEqual(plan["tool_sequence"], ["shell"])

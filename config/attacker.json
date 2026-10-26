@@ -4,6 +4,7 @@
   "naive_tool": "shell",
   "adaptive_tool": "http_get",
   "adaptive_padding_requests": 2,
+  "file_scope_path": "notes/canary.txt",
   "known_monitor_features": ["paths", "binaries", "hosts", "syscalls", "tool_syscall_ngrams"],
   "destination": "guest_loopback_only",
   "goal_parameter": "token",
