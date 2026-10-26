@@ -116,6 +116,11 @@ def phase3_run_directory():
     return f'data/phase3-corpus-{uuid.uuid4().hex[:12]}'
 
 
+def phase6_run_directory():
+    """Keep each mimicry attempt isolated from stale or failed run artifacts."""
+    return f'data/mimicry-corpus-{uuid.uuid4().hex[:12]}'
+
+
 def verify_image():
     result = command(['gpg', '--homedir', str(VM / 'gnupg'), '--batch',
                       '--status-fd', '1', '--verify', str(VM / 'SHA256SUMS.gpg'),
@@ -362,6 +367,7 @@ def main():
     seed.mkdir(exist_ok=True)
     seed_iso = VM / 'nocloud-seed.iso'
     phase3_run_dir = phase3_run_directory()
+    phase6_run_dir = phase6_run_directory()
     if overlay.exists():
         raise RuntimeError(f'{overlay} already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
@@ -415,7 +421,7 @@ if [ "$status" -eq 0 ] && [ "PHASE5" = "true" ]; then
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE6" = "true" ]; then
-    RUN_DIR=/opt/tripwire/data/mimicry-corpus bash /opt/tripwire/scripts/smoke_mimicry.sh > /root/phase6-mimicry.log 2>&1
+    RUN_DIR=/opt/tripwire/PHASE6_RUN_DIR bash /opt/tripwire/scripts/smoke_mimicry.sh > /root/phase6-mimicry.log 2>&1
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE7" = "true" ]; then
@@ -473,25 +479,25 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase5-join.log': '/opt/tripwire/data/injection-corpus/join.log',
                    'phase5-detector-eval.log': '/opt/tripwire/data/injection-corpus/detector-eval.log',
                    'phase6-mimicry.log': '/root/phase6-mimicry.log',
-                   'phase6-benign-corpus-path.txt': '/opt/tripwire/data/mimicry-corpus/benign-corpus-path.txt',
-                   'phase6-manifest.json': '/opt/tripwire/data/mimicry-corpus/manifest.json',
-                   'phase6-runs.jsonl': '/opt/tripwire/data/mimicry-corpus/runs.jsonl',
-                   'phase6-calls.jsonl': '/opt/tripwire/data/mimicry-corpus/calls.jsonl',
-                   'phase6-events.jsonl': '/opt/tripwire/data/mimicry-corpus/events.jsonl',
-                   'phase6-joined.jsonl': '/opt/tripwire/data/mimicry-corpus/joined.jsonl',
-                   'phase6-join-report.json': '/opt/tripwire/data/mimicry-corpus/join-report.json',
-                   'phase6-canary-receipts.jsonl': '/opt/tripwire/data/mimicry-corpus/canary-receipts.jsonl',
-                   'phase6-detector-results.json': '/opt/tripwire/data/mimicry-corpus/detector-eval/results.json',
-                   'phase6-detector-scores.jsonl': '/opt/tripwire/data/mimicry-corpus/detector-eval/scores.jsonl',
-                   'phase6-false-positives.jsonl': '/opt/tripwire/data/mimicry-corpus/detector-eval/false-positives.jsonl',
-                   'phase6-attack-verdicts.jsonl': '/opt/tripwire/data/mimicry-corpus/detector-eval/attack-verdicts.jsonl',
-                   'phase6-summary.json': '/opt/tripwire/data/mimicry-corpus/mimicry-summary.json',
-                   'phase6-egress-lockdown.log': '/opt/tripwire/data/mimicry-corpus/egress-lockdown.log',
-                   'phase6-loader.log': '/opt/tripwire/data/mimicry-corpus/loader.log',
-                   'phase6-sink.log': '/opt/tripwire/data/mimicry-corpus/sink.log',
-                   'phase6-runner.log': '/opt/tripwire/data/mimicry-corpus/runner.log',
-                   'phase6-join.log': '/opt/tripwire/data/mimicry-corpus/join.log',
-                   'phase6-detector-eval.log': '/opt/tripwire/data/mimicry-corpus/detector-eval.log',
+                   'phase6-benign-corpus-path.txt': '/opt/tripwire/PHASE6_RUN_DIR/benign-corpus-path.txt',
+                   'phase6-manifest.json': '/opt/tripwire/PHASE6_RUN_DIR/manifest.json',
+                   'phase6-runs.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/runs.jsonl',
+                   'phase6-calls.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/calls.jsonl',
+                   'phase6-events.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/events.jsonl',
+                   'phase6-joined.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/joined.jsonl',
+                   'phase6-join-report.json': '/opt/tripwire/PHASE6_RUN_DIR/join-report.json',
+                   'phase6-canary-receipts.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/canary-receipts.jsonl',
+                   'phase6-detector-results.json': '/opt/tripwire/PHASE6_RUN_DIR/detector-eval/results.json',
+                   'phase6-detector-scores.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/detector-eval/scores.jsonl',
+                   'phase6-false-positives.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/detector-eval/false-positives.jsonl',
+                   'phase6-attack-verdicts.jsonl': '/opt/tripwire/PHASE6_RUN_DIR/detector-eval/attack-verdicts.jsonl',
+                   'phase6-summary.json': '/opt/tripwire/PHASE6_RUN_DIR/mimicry-summary.json',
+                   'phase6-egress-lockdown.log': '/opt/tripwire/PHASE6_RUN_DIR/egress-lockdown.log',
+                   'phase6-loader.log': '/opt/tripwire/PHASE6_RUN_DIR/loader.log',
+                   'phase6-sink.log': '/opt/tripwire/PHASE6_RUN_DIR/sink.log',
+                   'phase6-runner.log': '/opt/tripwire/PHASE6_RUN_DIR/runner.log',
+                   'phase6-join.log': '/opt/tripwire/PHASE6_RUN_DIR/join.log',
+                   'phase6-detector-eval.log': '/opt/tripwire/PHASE6_RUN_DIR/detector-eval.log',
                    'phase7-eval.log': '/root/phase7-eval.log',
                    'phase7-detector-results.json': '/opt/tripwire/data/injection-corpus/detector-eval/results.json',
                    'phase7-ablation-results.json': '/opt/tripwire/data/injection-corpus/ablation-eval/results.json',
@@ -521,6 +527,7 @@ systemctl poweroff
                                         f'"{str(options.phase3).lower()}" = "true"')
     guest_script = guest_script.replace('PHASE3_MODEL_CONFIG', str(phase3_model_config))
     guest_script = guest_script.replace('PHASE3_RUN_DIR', phase3_run_dir)
+    guest_script = guest_script.replace('PHASE6_RUN_DIR', phase6_run_dir)
     guest_script = guest_script.replace('PHASE3_MODEL_LOCK', str(phase3_model_lock))
     guest_script = guest_script.replace('PHASE5_MODEL_LOCK', str(phase5_model_lock))
     guest_script = guest_script.replace('PHASE5_MODEL_CONFIG', str(phase5_model_config))
