@@ -3,9 +3,14 @@
 Research project for an eBPF behavioral monitor of tool-using LLM agents and an
 adaptive attacker against that monitor. The Phase 0–8 implementation, local
 injection harness, mimicry probe, detector baselines, ablations, taxonomy
-reporter, and paper skeleton are present. The measured benign corpus and
-attack-evaluation tables remain pending because the current development host
-could not safely complete the model guest.
+reporter, and paper skeleton are present. The pinned tiny-model guest produced
+a 90-run benign corpus, seven failed injection attempts, deterministic mimicry
+results, and Phase 7 ablations. Those measurements are utility-confounded: the
+model succeeded on 15/90 benign tasks and achieved none of the seven injection
+goals. The adaptive probe reached both local canary goals, and both detectors
+flagged both examples; the fetch baseline had no successful HTTP calls, so this
+does not establish a meaningful in-envelope evasion result. See the Phase 5–8
+notes and paper draft for exact counts and limitations.
 
 All experiments belong in a throwaway guest you control, using fake secrets and
 local sinks. Never mount host home directories or pass through host credentials.
@@ -17,7 +22,7 @@ For a fresh end-to-end run from a launcher with QEMU/KVM, run
 benign corpus, injections, mimicry, and final evaluation. The default uses the
 pinned Qwen3 8B profile with an 8 GiB guest and requires at least twice the
 guest RAM free on the launcher under its conservative headroom rule. You may
-set `MODEL_CONFIG=config/model.tiny.json GUEST_MEMORY_MIB=2048` to select the
+set `MODEL_CONFIG=config/model.tiny.json GUEST_MEMORY_MIB=1024 GUEST_SWAP_MIB=3072` to select the
 documented 0.6B fallback explicitly; record that model as a utility confound.
 Both this script and direct calls to `scripts/run_phase0_vm.py` require
 `MemAvailable` to be at least twice the selected guest RAM. This is a
@@ -216,11 +221,11 @@ without successful goals or calibrated verdicts remain pending; see
 
 The repository uses the [MIT License](LICENSE). The one-command reproduction
 entrypoint is `bash scripts/reproduce.sh`; it uses separate VM overlays and
-stops on the first failed phase. The paper skeleton is
+stops on the first failed phase. The workshop draft is
 [docs/paper/WORKSHOP_DRAFT.md](docs/paper/WORKSHOP_DRAFT.md). It contains
-verified related-work links, `TODO(verify)` citation checks, and
-`TODO(measure)` placeholders. Current VM resource failures and unmeasured
-results are summarized in [Phase 8 notes](docs/notes/phase8.md).
+preliminary guest measurements and explicit utility limitations. The fresh
+launcher reproduction and successful injection measurements remain pending;
+see [Phase 8 notes](docs/notes/phase8.md).
 
 
 ## Phase 0 acceptance

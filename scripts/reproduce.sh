@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 guest_memory_mib=${GUEST_MEMORY_MIB:-8192}
+guest_swap_mib=${GUEST_SWAP_MIB:-0}
 disk_gib=${GUEST_DISK_GIB:-24}
 timeout_seconds=${GUEST_TIMEOUT_SECONDS:-3600}
 model_config=${MODEL_CONFIG:-config/model.json}
@@ -12,6 +13,10 @@ for tool in python3 qemu-system-x86_64 qemu-img gpg; do
 done
 if [[ ! $guest_memory_mib =~ ^[0-9]+$ ]] || (( guest_memory_mib < 1024 )); then
     echo 'ERROR: GUEST_MEMORY_MIB must be an integer of at least 1024' >&2
+    exit 1
+fi
+if [[ ! $guest_swap_mib =~ ^[0-9]+$ ]] || (( guest_swap_mib > 4096 )); then
+    echo 'ERROR: GUEST_SWAP_MIB must be an integer between 0 and 4096' >&2
     exit 1
 fi
 if [[ ! $disk_gib =~ ^[0-9]+$ ]] || (( disk_gib < 12 )); then
@@ -43,7 +48,8 @@ check_host_headroom() {
 run_guest() {
     check_host_headroom
     TMPDIR=${TMPDIR:-/dev/shm} python3 "$repo_dir/scripts/run_phase0_vm.py" \
-        --memory-mib "$guest_memory_mib" --disk-gib "$disk_gib" \
+        --memory-mib "$guest_memory_mib" --swap-mib "$guest_swap_mib" \
+        --disk-gib "$disk_gib" \
         --timeout-seconds "$timeout_seconds" "$@"
 }
 

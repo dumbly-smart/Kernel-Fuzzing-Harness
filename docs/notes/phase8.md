@@ -6,23 +6,34 @@
   launcher host. It provisions QEMU guests without host mounts, checks a
   conservative free-memory headroom rule before each launch, and uses the
   preferred pinned model config unless `MODEL_CONFIG` is set.
-- The launcher accepts `GUEST_MEMORY_MIB`, `GUEST_DISK_GIB`, and
-  `GUEST_TIMEOUT_SECONDS`. Its 2x memory rule is a local safety heuristic, not
+- The launcher accepts `GUEST_MEMORY_MIB`, `GUEST_SWAP_MIB`, `GUEST_DISK_GIB`,
+  and `GUEST_TIMEOUT_SECONDS`. Its 2x memory rule is a local safety heuristic, not
   a guarantee of model fit; available-memory and VM sizing remain recorded in
   the QEMU provenance. The direct Python VM runner enforces the same rule, so
   bypassing `scripts/reproduce.sh` does not skip the check.
 - `LICENSE` uses the MIT License. No AgentSight, Tetragon, or AgentDojo source
   code was copied into Tripwire.
-- `docs/paper/WORKSHOP_DRAFT.md` is the workshop paper skeleton. Verified
+- `docs/paper/WORKSHOP_DRAFT.md` is a workshop draft with preliminary results. Verified
   primary sources are linked, including foundational syscall-sequence and
   mimicry work. One AgentDojo scenario is adapted; full benchmark integration
-  and all missing measurements remain follow-up work, not completed results.
+  and successful injection measurements remain follow-up work.
 
-## Acceptance status
+## Measured implementation status
 
-Static suite, VM orchestration, detector, attacker, ablation, taxonomy, and
-paper artifacts are implemented. Local verification passes. A fresh-VM
-end-to-end reproduction and the main results table remain unaccepted because
-the current host could not complete the Phase 3 model guest without risking
-another host-wide OOM. The script intentionally aborts when its headroom check
-fails. No outcome is synthesized from unit tests or incomplete VM boots.
+The accepted guest completed Phase 3 with the explicit tiny profile:
+`qwen3:0.6b-q4_K_M`, Ollama 0.40.7, 90 runs, 15 successful tasks (16.7%).
+Phase 5 ran seven injections with zero successful goals. Phase 6 reached both
+fake-canary goals and both detectors flagged both examples; this was not an
+in-envelope evasion because all 18 benign fetch runs had zero calls. Phase 7
+produced five ablations, a plot, and seven pending taxonomy rows. See the
+phase-specific notes for exact FPR, orphan, and ablation counts.
+
+`scripts/reproduce.sh` now accepts `GUEST_SWAP_MIB` so the measured 1 GiB RAM +
+3 GiB guest-swap profile can be requested explicitly. The default 8B profile
+and a clean-launcher full reproduction have not been rerun end-to-end in this
+turn. `make check` on the development host fails as designed because it is
+Arch rather than Ubuntu 24.04 and lacks guest detection, `clang-18`,
+`bpftool`, and `dpkg-query`; the disposable guest ran its own check and tests.
+The research question therefore remains only partially answered: a capable
+model corpus, successful injections, a successful in-envelope evasion, and
+blocking utility measurements are still needed.
