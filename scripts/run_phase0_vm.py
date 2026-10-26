@@ -6,6 +6,7 @@ serves only generated seed data and a git archive of this repository.
 """
 import base64
 import binascii
+import hashlib
 import functools
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -39,6 +40,7 @@ GUEST_ARTIFACT_NAMES = (
     'phase3-orphan-events.jsonl', 'phase3-egress-lockdown.log',
     'phase3-agent-account.log', 'phase3-loader.log', 'phase3-runner.log',
     'phase5-agent-account.log', 'phase5-injections.log', 'phase5-manifest.json',
+    'phase5-benign-corpus-path.txt',
     'phase5-summary.json', 'phase5-runs.jsonl', 'phase5-calls.jsonl',
     'phase5-events.jsonl', 'phase5-joined.jsonl', 'phase5-join-report.json',
     'phase5-canary-receipts.jsonl', 'phase5-egress-lockdown.log',
@@ -51,6 +53,7 @@ GUEST_ARTIFACT_NAMES = (
     'phase6-join-report.json', 'phase6-canary-receipts.jsonl',
     'phase6-detector-results.json', 'phase6-detector-scores.jsonl',
     'phase6-false-positives.jsonl', 'phase6-attack-verdicts.jsonl',
+    'phase6-benign-corpus-path.txt',
     'phase6-summary.json', 'phase6-egress-lockdown.log', 'phase6-loader.log',
     'phase6-sink.log', 'phase6-runner.log', 'phase6-join.log',
     'phase6-detector-eval.log', 'phase7-eval.log',
@@ -200,11 +203,23 @@ def decode_guest_result(serial):
     """Decode chunked guest artifacts, retaining compatibility with old guests."""
     chunks = {}
     chunk_count = None
+    payload_length = None
+    payload_sha256 = None
+    pending_chunk = None
     legacy_payloads = []
     chunk_pattern = re.compile(
         r'^TRIPWIRE_RESULT_PART=(\d+)/(\d+):([A-Za-z0-9+/=]+)')
+    metadata_pattern = re.compile(r'^TRIPWIRE_RESULT_META=(\d+):([0-9a-f]{64})$')
     legacy_pattern = re.compile(r'^TRIPWIRE_RESULT=([A-Za-z0-9+/=]+)')
     for line in serial.splitlines():
+        metadata = metadata_pattern.match(line)
+        if metadata:
+            current_length, current_sha256 = int(metadata.group(1)), metadata.group(2)
+            if (payload_length is not None and
+                    (current_length != payload_length or current_sha256 != payload_sha256)):
+                raise RuntimeError('guest result has inconsistent metadata')
+            payload_length, payload_sha256 = current_length, current_sha256
+            continue
         match = chunk_pattern.match(line)
         if match:
             index, total = int(match.group(1)), int(match.group(2))
@@ -218,7 +233,18 @@ def decode_guest_result(serial):
                 raise RuntimeError(
                     f'guest result chunk {index} is duplicated with different data')
             chunks[index] = value
+            expected_length = _expected_chunk_length(index, total, payload_length)
+            pending_chunk = (index if expected_length is not None and
+                             expected_length > len(value) else None)
             continue
+        if pending_chunk is not None:
+            expected = _expected_chunk_length(pending_chunk, chunk_count, payload_length)
+            continuation = re.fullmatch(r'([A-Za-z0-9+/=]+)', line)
+            if expected is not None and continuation:
+                needed = expected - len(chunks[pending_chunk])
+                chunks[pending_chunk] += continuation.group(1)[:needed]
+                if len(chunks[pending_chunk]) >= expected:
+                    pending_chunk = None
         match = legacy_pattern.match(line)
         if match:
             legacy_payloads.append(match.group(1))
@@ -234,6 +260,14 @@ def decode_guest_result(serial):
     else:
         raise RuntimeError('guest returned no result; see data/vm/serial.log')
 
+    if payload_length is not None:
+        if len(payload) != payload_length:
+            raise RuntimeError(
+                f'guest result payload length mismatch: got {len(payload)}, expected {payload_length}')
+        actual_sha256 = hashlib.sha256(payload.encode('ascii')).hexdigest()
+        if actual_sha256 != payload_sha256:
+            raise RuntimeError('guest result payload SHA256 mismatch')
+
     try:
         result = json.loads(base64.b64decode(payload, validate=True))
     except (binascii.Error, json.JSONDecodeError) as exc:
@@ -242,6 +276,16 @@ def decode_guest_result(serial):
             not isinstance(result.get('files'), dict)):
         raise RuntimeError('guest result artifact has an invalid structure')
     return result
+
+
+def _expected_chunk_length(index, chunk_count, payload_length):
+    if chunk_count is None:
+        return None
+    if index < chunk_count:
+        return RESULT_CHUNK_CHARS
+    if payload_length is not None:
+        return payload_length - RESULT_CHUNK_CHARS * (chunk_count - 1)
+    return None
 
 
 def main():
@@ -379,7 +423,7 @@ if [ "$status" -eq 0 ] && [ "PHASE7" = "true" ]; then
     status=$?
 fi
 python3 - "$status" <<'RESULT'
-import base64, json, pathlib, sys
+import base64, hashlib, json, pathlib, sys
 files = {}
 for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/setup-repeat.log',
                    'acceptance.log': '/root/acceptance.log', 'smoke.log': '/root/smoke.log',
@@ -417,6 +461,7 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase5-canary-receipts.jsonl': '/opt/tripwire/data/injection-corpus/canary-receipts.jsonl',
                    'phase5-egress-lockdown.log': '/opt/tripwire/data/injection-corpus/egress-lockdown.log',
                    'phase5-agent-account.log': '/opt/tripwire/data/injection-corpus/agent-account.log',
+                   'phase5-benign-corpus-path.txt': '/opt/tripwire/data/injection-corpus/benign-corpus-path.txt',
                    'phase5-prompt-classifier.json': '/opt/tripwire/data/injection-corpus/prompt-classifier.json',
                    'phase5-detector-results.json': '/opt/tripwire/data/injection-corpus/detector-eval/results.json',
                    'phase5-detector-scores.jsonl': '/opt/tripwire/data/injection-corpus/detector-eval/scores.jsonl',
@@ -428,6 +473,7 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase5-join.log': '/opt/tripwire/data/injection-corpus/join.log',
                    'phase5-detector-eval.log': '/opt/tripwire/data/injection-corpus/detector-eval.log',
                    'phase6-mimicry.log': '/root/phase6-mimicry.log',
+                   'phase6-benign-corpus-path.txt': '/opt/tripwire/data/mimicry-corpus/benign-corpus-path.txt',
                    'phase6-manifest.json': '/opt/tripwire/data/mimicry-corpus/manifest.json',
                    'phase6-runs.jsonl': '/opt/tripwire/data/mimicry-corpus/runs.jsonl',
                    'phase6-calls.jsonl': '/opt/tripwire/data/mimicry-corpus/calls.jsonl',
@@ -456,9 +502,12 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
     if pathlib.Path(path).exists():
         files[name] = pathlib.Path(path).read_text()
 payload = base64.b64encode(json.dumps({'status': int(sys.argv[1]), 'files': files}).encode()).decode()
+payload_sha256 = hashlib.sha256(payload.encode('ascii')).hexdigest()
 with open('/dev/ttyS0', 'w') as serial:
     chunks = [payload[index:index + RESULT_CHUNK_CHARS]
               for index in range(0, len(payload), RESULT_CHUNK_CHARS)]
+    serial.write(f'\nTRIPWIRE_RESULT_META={len(payload)}:{payload_sha256}\n')
+    serial.flush()
     for index, chunk in enumerate(chunks, start=1):
         serial.write(f'\nTRIPWIRE_RESULT_PART={index}/{len(chunks)}:{chunk}\n')
         serial.flush()

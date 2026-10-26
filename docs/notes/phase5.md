@@ -49,6 +49,17 @@ remaining outside detector training/calibration. Full acceptance awaits a
 completed Phase 3 model/corpus guest. These tests do not establish agent
 takeover rates or monitor effectiveness; those require successful guest runs.
 
+The first Phase 5 guest booted and reached the injection script, which stopped
+before running cases with the exact error `ERROR: benign detector training
+artifact is missing: /opt/tripwire/data/phase3-corpus/runs.jsonl`. Phase 3
+stores runs in unique `phase3-corpus-<id>` directories, so Phase 5 and Phase 6
+now resolve an explicit, canonical, or newest complete corpus and record the
+selected path. The guest shut down normally, but an interleaved watchdog message
+split one large serial result chunk; the host initially reported
+`guest result artifact could not be decoded: Excess padding not allowed`. The
+artifacts were recovered, and result chunks now carry a length and SHA256
+checksum so the host can repair a split chunk or reject corrupted data.
+
 ## AgentDojo integration review
 
 One case, `inj-agentdojo-workspace-exfil`, adapts the intent of AgentDojo's

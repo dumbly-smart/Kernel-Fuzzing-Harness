@@ -12,7 +12,8 @@ fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 model_config=${MODEL_CONFIG:-$repo_dir/config/model.json}
-benign_corpus=${BENIGN_CORPUS_DIR:-$repo_dir/data/phase3-corpus}
+benign_corpus=$(PYTHONPATH="$repo_dir" python3 -m tripwire.benign_corpus \
+    --data-dir "$repo_dir/data")
 if [[ -n ${RUN_DIR:-} ]]; then
     run_dir=$RUN_DIR
     [[ ! -e $run_dir ]] || { echo "ERROR: run directory already exists: $run_dir" >&2; exit 1; }
@@ -20,6 +21,7 @@ if [[ -n ${RUN_DIR:-} ]]; then
 else
     run_dir=$(mktemp -d "$repo_dir/data/injection-corpus.XXXXXX")
 fi
+printf '%s\n' "$benign_corpus" >"$run_dir/benign-corpus-path.txt"
 python3 "$repo_dir/scripts/lockdown_egress.py" >"$run_dir/egress-lockdown.log"
 bash "$repo_dir/scripts/prepare_agent_user.sh" >"$run_dir/agent-account.log"
 for required in runs.jsonl joined.jsonl; do

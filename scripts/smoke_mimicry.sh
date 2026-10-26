@@ -11,7 +11,8 @@ if [[ ! -r /sys/kernel/btf/vmlinux || ! -d /sys/fs/cgroup ]]; then
 fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-benign_corpus=${BENIGN_CORPUS_DIR:-$repo_dir/data/phase3-corpus}
+benign_corpus=$(PYTHONPATH="$repo_dir" python3 -m tripwire.benign_corpus \
+    --data-dir "$repo_dir/data")
 if [[ -n ${RUN_DIR:-} ]]; then
     run_dir=$RUN_DIR
     [[ ! -e $run_dir ]] || { echo "ERROR: run directory already exists: $run_dir" >&2; exit 1; }
@@ -19,6 +20,7 @@ if [[ -n ${RUN_DIR:-} ]]; then
 else
     run_dir=$(mktemp -d "$repo_dir/data/mimicry.XXXXXX")
 fi
+printf '%s\n' "$benign_corpus" >"$run_dir/benign-corpus-path.txt"
 for required in runs.jsonl joined.jsonl; do
     [[ -s "$benign_corpus/$required" ]] || {
         echo "ERROR: benign detector training artifact is missing: $benign_corpus/$required" >&2

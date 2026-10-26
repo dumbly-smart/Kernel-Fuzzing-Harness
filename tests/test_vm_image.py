@@ -140,6 +140,26 @@ class ImageVerificationTests(unittest.TestCase):
 
         self.assertEqual(vm.decode_guest_result(serial), result)
 
+    def test_recovers_guest_result_chunk_split_by_kernel_console_message(self):
+        result = {"status": 0, "files": {"trace.jsonl": "x" * 30000}}
+        payload = base64.b64encode(json.dumps(result).encode()).decode()
+        chunks = [payload[i:i + vm.RESULT_CHUNK_CHARS]
+                  for i in range(0, len(payload), vm.RESULT_CHUNK_CHARS)]
+        middle = chunks[1]
+        split_at = 1200
+        serial = [
+            f"TRIPWIRE_RESULT_META={len(payload)}:{hashlib.sha256(payload.encode()).hexdigest()}",
+            f"TRIPWIRE_RESULT_PART=1/{len(chunks)}:{chunks[0]}",
+            f"TRIPWIRE_RESULT_PART=2/{len(chunks)}:{middle[:split_at]}[  12.0] watchdog warning",
+            middle[split_at:],
+        ]
+        serial.extend(
+            f"TRIPWIRE_RESULT_PART={index}/{len(chunks)}:{chunk}"
+            for index, chunk in enumerate(chunks[2:], start=3)
+        )
+
+        self.assertEqual(vm.decode_guest_result("\n".join(serial)), result)
+
     def test_decodes_legacy_single_line_guest_result(self):
         result = {"status": 0, "files": {}}
         payload = base64.b64encode(json.dumps(result).encode()).decode()
