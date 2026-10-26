@@ -1,4 +1,4 @@
-"""Deterministic local attacker: compare an obvious shell exfil with a fetch mimic."""
+"""Run deterministic loopback-only attacker strategies for mimicry research."""
 
 from __future__ import annotations
 
@@ -106,7 +106,7 @@ def validate_output_dir(output_dir: Path) -> None:
 
 
 def run_campaign(output_dir: Path, base_url: str, receipts_path: Path) -> list[dict[str, Any]]:
-    """Run both deterministic strategies through the production tool wrappers."""
+    """Run naive and adaptive strategy variants through production tool wrappers."""
     _loopback_origin(base_url)
     validate_output_dir(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
