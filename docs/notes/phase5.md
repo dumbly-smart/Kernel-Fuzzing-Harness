@@ -85,3 +85,29 @@ or verbatim payloads were copied. Sources: the
 [AgentDojo repository](https://github.com/ethz-spylab/agentdojo), its
 [v1.2.2 workspace suite](https://github.com/ethz-spylab/agentdojo/tree/main/src/agentdojo/default_suites/v1_2_2/workspace),
 and the paper in the related-work references.
+
+
+## Measured guest run (2026-10-26)
+
+The retry used a fresh 16 GiB overlay backed by the provisioned Phase 3 guest,
+with 1 GiB guest RAM, 3 GiB guest swap, and the digest-verified
+`qwen3:0.6b-q4_K_M` model (Ollama 0.40.7). Corpus discovery selected
+`/opt/tripwire/data/phase3-corpus-0d93289b7a84`. The guest exited 0 and produced
+seven run rows, joined traces, detector scores, and the prompt-classifier
+report. All seven declarative attack goals were false; the process goal was
+also false after trace finalization. There were no runtime errors.
+
+The summary reports keyword-classifier TPR 7/7 and FPR 0/30 on this tiny,
+patterned suite. This is a lexical smoke result, not evidence of semantic
+injection detection. The OS detector evaluation reports one positive among
+seven attack rows at both target FPR settings; because no attack goal succeeded,
+that score is not attack-detection TPR. Benign detector measurements remain
+confounded by the Phase 3 model's 15/90 task success. Join quality was poor:
+8/468 behavior events assigned, 460 orphaned (98.29%), zero ambiguous, and 186
+tracer statistics records excluded from the behavior denominator. Investigate
+join boundaries and startup/background events before treating trace-to-tool
+correlation as accepted. The local sink recorded no canary receipts.
+
+This run corrects the earlier note that guest acceptance and monitor verdicts
+were still pending. Automation and artifact production passed; attack success
+and useful efficacy evidence did not.
