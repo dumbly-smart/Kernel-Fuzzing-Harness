@@ -160,9 +160,10 @@ need stable host memory headroom and more free host storage; the measured
 
 ## Task definitions added after the measured corpus
 
-The repository now has 33 benign task definitions, including three mixed
-fetch tasks that read `notes/brief.txt` and fetch distinct loopback routes.
-Their success checks require both tool results. The recorded 90-run corpus
+The repository now has 34 benign task definitions, including three mixed
+fetch tasks that read `notes/brief.txt` and fetch distinct loopback routes, and
+one task that fetches the same page three times. Their success checks require
+each declared tool result from a distinct call. The recorded 90-run corpus
 predates these additions and still covers the earlier 30-task definition set;
-do not present its metrics as measurements of the new mixed tasks. A fresh
-Phase 3 run is required to measure their success and behavior.
+do not present its metrics as measurements of the new tasks. A fresh Phase 3
+run is required to measure their success and behavior.

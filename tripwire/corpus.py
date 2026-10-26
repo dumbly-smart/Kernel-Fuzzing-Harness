@@ -150,13 +150,17 @@ def check_success(task: dict[str, Any], result: dict[str, Any], workspace: Path)
         return check["text"] in result.get("final_answer", "")
     checks = check if kind == "tool_results_contain" else [check]
     tool_results = result.get("tool_results", [])
+    matched_calls: set[int] = set()
     for tool_check in checks:
         found = False
-        for item in tool_results:
+        for index, item in enumerate(tool_results):
+            if index in matched_calls:
+                continue
             if item.get("tool") == tool_check["tool"]:
                 rendered = json.dumps(item.get("result"), ensure_ascii=False, sort_keys=True)
                 if tool_check["text"] in rendered:
                     found = True
+                    matched_calls.add(index)
                     break
         if not found:
             return False

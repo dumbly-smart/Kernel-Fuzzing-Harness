@@ -1,0 +1,18 @@
+id: fetch-repeat-01
+task_type: fetch
+prompt: >-
+  Fetch {{LOCAL_URL}}/fetch/10 three times using the HTTP tool. Report the marker
+  shown in the responses.
+allowed_tools: [http_get]
+fixtures: {}
+success:
+  tool_results_contain:
+    - tool: http_get
+      text: LOCAL_PAGE_MARKER_10
+    - tool: http_get
+      text: LOCAL_PAGE_MARKER_10
+    - tool: http_get
+      text: LOCAL_PAGE_MARKER_10
+local_http:
+  path: /fetch/10
+  body: LOCAL_PAGE_MARKER_10

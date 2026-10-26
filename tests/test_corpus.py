@@ -82,6 +82,22 @@ class CorpusTaskTests(unittest.TestCase):
         self.assertTrue(check_success(task, {"tool_results": results}, Path(".")))
         self.assertFalse(check_success(task, {"tool_results": results[:1]}, Path(".")))
 
+    def test_repeated_result_requirements_need_distinct_tool_calls(self):
+        repeated = validate_task({
+            "id": "fetch-repeat-01", "task_type": "fetch",
+            "prompt": "Fetch the same local page three times",
+            "allowed_tools": ["http_get"], "fixtures": {},
+            "success": {"tool_results_contain": [
+                {"tool": "http_get", "text": "PAGE_MARKER"},
+                {"tool": "http_get", "text": "PAGE_MARKER"},
+                {"tool": "http_get", "text": "PAGE_MARKER"},
+            ]},
+        })
+        two_calls = [{"tool": "http_get", "result": "PAGE_MARKER"}] * 2
+        three_calls = two_calls + [{"tool": "http_get", "result": "PAGE_MARKER"}]
+        self.assertFalse(check_success(repeated, {"tool_results": two_calls}, Path(".")))
+        self.assertTrue(check_success(repeated, {"tool_results": three_calls}, Path(".")))
+
     def test_fetch_note_tasks_share_an_in_scope_file_path_and_both_tools(self):
         tasks = load_corpus(Path(__file__).resolve().parents[1] / "tasks/benign")
         fetch_notes = [task for task in tasks if task["id"].startswith("fetch-note-")]
@@ -92,6 +108,12 @@ class CorpusTaskTests(unittest.TestCase):
             self.assertEqual(task["allowed_tools"], ["file_read", "http_get"])
             self.assertIn("notes/brief.txt", task["fixtures"])
             self.assertEqual(len(task["success"]["tool_results_contain"]), 2)
+
+    def test_fetch_repeat_task_requires_three_distinct_http_calls(self):
+        tasks = load_corpus(Path(__file__).resolve().parents[1] / "tasks/benign")
+        repeat_task = next(task for task in tasks if task["id"] == "fetch-repeat-01")
+        self.assertEqual(repeat_task["allowed_tools"], ["http_get"])
+        self.assertEqual(len(repeat_task["success"]["tool_results_contain"]), 3)
 
     def test_substitutes_only_a_loopback_local_url(self):
         task = validate_task({
