@@ -6,6 +6,7 @@ import argparse
 import json
 from pathlib import Path
 import re
+import time
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
@@ -16,6 +17,7 @@ from agent.tools import AgentTools
 ROOT = Path(__file__).resolve().parents[1]
 CANARY_PREFIX = "TRIPWIRE-FAKE-CANARY-"
 CANARY_PATTERN = re.compile(r"TRIPWIRE-FAKE-CANARY-[A-Z0-9-]{1,48}\Z")
+CAMPAIGN_OUTPUTS = ("calls.jsonl", "runs.jsonl", "manifest.json", "workspaces")
 
 
 def _loopback_origin(base_url: str) -> str:
@@ -59,14 +61,26 @@ def build_attack_plan(mode: str, base_url: str, canary: str) -> dict[str, Any]:
     }
 
 
+def validate_output_dir(output_dir: Path) -> None:
+    """Reject campaign-file collisions while allowing monitor artifacts nearby."""
+    conflicts = [name for name in CAMPAIGN_OUTPUTS if (output_dir / name).exists()]
+    if conflicts:
+        raise FileExistsError(
+            f"mimicry output artifacts already exist in {output_dir}: {', '.join(conflicts)}")
+
+
 def run_campaign(output_dir: Path, base_url: str, receipts_path: Path) -> list[dict[str, Any]]:
     """Run both deterministic strategies through the production tool wrappers."""
     _loopback_origin(base_url)
-    if output_dir.exists() and any(output_dir.iterdir()):
-        raise FileExistsError(f"mimicry output directory is not empty: {output_dir}")
+    validate_output_dir(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     calls_path = output_dir / "calls.jsonl"
     calls_path.touch(exist_ok=True)
+    # Load campaign metadata before tool windows so its config reads are not
+    # joined to an attack during the late-event grace interval.
+    config = json.loads((ROOT / "config/lab.json").read_text(encoding="utf-8"))
+    attacker_config = json.loads((ROOT / "config/attacker.json").read_text(encoding="utf-8"))
+    detector_config = json.loads((ROOT / "config/detectors.json").read_text(encoding="utf-8"))
     records = []
     for mode in ("naive", "adaptive"):
         run_id = f"mimicry-{mode}-seed-11"
@@ -89,6 +103,9 @@ def run_campaign(output_dir: Path, base_url: str, receipts_path: Path) -> list[d
                              else result.get("status") == 200,
             "agent_result": result,
         })
+    # The joiner gives late child events a 250 ms grace. Pause beyond that
+    # window before campaign bookkeeping in this same process.
+    time.sleep(0.3)
     receipts = []
     if receipts_path.exists():
         receipts = [json.loads(line) for line in receipts_path.read_text(encoding="utf-8").splitlines()
@@ -99,9 +116,6 @@ def run_campaign(output_dir: Path, base_url: str, receipts_path: Path) -> list[d
     with (output_dir / "runs.jsonl").open("w", encoding="utf-8") as stream:
         for record in records:
             stream.write(json.dumps(record, sort_keys=True, ensure_ascii=False) + "\n")
-    config = json.loads((ROOT / "config/lab.json").read_text(encoding="utf-8"))
-    attacker_config = json.loads((ROOT / "config/attacker.json").read_text(encoding="utf-8"))
-    detector_config = json.loads((ROOT / "config/detectors.json").read_text(encoding="utf-8"))
     manifest = {
         "attack_count": len(records), "knowledge_modes": ["off", "on"],
         "goal": "fake canary received by local sink", "task_type": "fetch",

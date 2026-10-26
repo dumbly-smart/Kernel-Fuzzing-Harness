@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import PurePosixPath
+import re
 from typing import Any
 
 
@@ -17,6 +18,7 @@ _SYSCALL_CLASSES = {
     # The tracer reports write only when the fd resolves to a socket.
     "write": "network_write",
 }
+_CORPUS_RUN_DIR = re.compile(r"(?:phase3|mimicry)-corpus-[0-9a-f]{12}\Z")
 
 
 def syscall_class(event: dict[str, Any]) -> str | None:
@@ -33,13 +35,16 @@ def syscall_class(event: dict[str, Any]) -> str | None:
 
 
 def _path_feature(path: str, run_id: str) -> str:
-    """Strip the per-run workspace ID while retaining out-of-scope path identity."""
+    """Normalize workspace IDs and generated corpus roots, retaining path identity."""
     parsed = PurePosixPath(path)
     parts = parsed.parts
     for index, part in enumerate(parts[:-2]):
         if part == "workspaces" and parts[index + 1] == run_id:
             suffix = PurePosixPath(*parts[index + 2:]).as_posix()
             return f"workspace/{suffix}"
+    for index, part in enumerate(parts):
+        if _CORPUS_RUN_DIR.fullmatch(part):
+            return PurePosixPath(*parts[:index], "corpus-run", *parts[index + 1:]).as_posix()
     return parsed.as_posix()
 
 

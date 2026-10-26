@@ -35,6 +35,19 @@ class DetectorFeatureTests(unittest.TestCase):
         self.assertEqual(a["paths"], b["paths"])
         self.assertEqual(a["sequences"], ["file_read|file_open"])
 
+    def test_corpus_artifact_paths_are_stable_across_generated_run_ids(self):
+        phase3 = {"call_id": "fetch-a-seed-11:0001", "tool": "http_get", "events": [
+            syscall("openat", path="/opt/tripwire/data/phase3-corpus-aabbccddeeff/calls.jsonl")
+        ]}
+        mimicry = {"call_id": "mimicry-adaptive-seed-11:0001", "tool": "http_get", "events": [
+            syscall("openat", path="/opt/tripwire/data/mimicry-corpus-001122334455/calls.jsonl")
+        ]}
+        a = extract_sample_features("fetch-a-seed-11", "fetch", [phase3])
+        b = extract_sample_features("mimicry-adaptive-seed-11", "fetch", [mimicry])
+
+        self.assertEqual(a["paths"], ["/opt/tripwire/data/corpus-run/calls.jsonl"])
+        self.assertEqual(a["paths"], b["paths"])
+
     def test_group_run_samples_includes_zero_call_model_failure(self):
         runs = [
             {"run_id": "task-a-seed-11", "task_id": "task-a", "task_type": "search"},

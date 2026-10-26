@@ -1,7 +1,9 @@
 import unittest
+from pathlib import Path
+import tempfile
 from urllib.parse import parse_qs, urlsplit
 
-from attacker.mimicry import build_attack_plan
+from attacker.mimicry import build_attack_plan, validate_output_dir
 
 
 class MimicryPlanTests(unittest.TestCase):
@@ -22,6 +24,22 @@ class MimicryPlanTests(unittest.TestCase):
     def test_plan_rejects_non_loopback_sink_origins(self):
         with self.assertRaisesRegex(ValueError, "loopback"):
             build_attack_plan("adaptive", "http://example.invalid:18481", "TRIPWIRE-FAKE-CANARY-A")
+
+    def test_campaign_allows_monitor_artifacts_in_shared_run_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory)
+            (output_dir / "events.jsonl").write_text("{}\n")
+            (output_dir / "canary-receipts.jsonl").write_text("")
+
+            validate_output_dir(output_dir)
+
+    def test_campaign_rejects_existing_campaign_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory)
+            (output_dir / "calls.jsonl").write_text("existing\n")
+
+            with self.assertRaisesRegex(FileExistsError, "calls.jsonl"):
+                validate_output_dir(output_dir)
 
 
 if __name__ == "__main__":

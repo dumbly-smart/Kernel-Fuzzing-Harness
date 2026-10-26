@@ -21,7 +21,6 @@ else
     run_dir=$(mktemp -d "$repo_dir/data/mimicry.XXXXXX")
 fi
 printf '%s\n' "$benign_corpus" >"$run_dir/benign-corpus-path.txt"
-campaign_dir="$run_dir/campaign"
 for required in runs.jsonl joined.jsonl; do
     [[ -s "$benign_corpus/$required" ]] || {
         echo "ERROR: benign detector training artifact is missing: $benign_corpus/$required" >&2
@@ -78,18 +77,10 @@ grep -q '^tripwire: attached ' "$run_dir/loader.log" || {
 printf '%s\n' "$$" > "$cgroup_path/cgroup.procs"
 set +e
 runuser -u tripwire-agent -- python3 -m attacker.mimicry \
-    --output-dir "$campaign_dir" --local-url "http://127.0.0.1:$sink_port" \
+    --output-dir "$run_dir" --local-url "http://127.0.0.1:$sink_port" \
     --receipts "$run_dir/canary-receipts.jsonl" >"$run_dir/runner.log" 2>&1
 runner_status=$?
 set -e
-
-# Keep campaign-owned files separate while the monitor and sink write their
-# own artifacts in run_dir. The evaluator consumes the copied attack rows.
-for artifact in manifest.json calls.jsonl runs.jsonl; do
-    if [[ -f "$campaign_dir/$artifact" ]]; then
-        cp "$campaign_dir/$artifact" "$run_dir/$artifact"
-    fi
-done
 
 sleep 1
 kill -INT "$tracer_pid"
@@ -99,8 +90,7 @@ kill "$sink_pid" 2>/dev/null || true
 wait "$sink_pid" 2>/dev/null || true
 sink_pid=
 
-python3 -m tripwire.join --events "$run_dir/events.jsonl" \
-    --calls "$campaign_dir/calls.jsonl" \
+python3 -m tripwire.join --events "$run_dir/events.jsonl" --calls "$run_dir/calls.jsonl" \
     --output "$run_dir/joined.jsonl" --report "$run_dir/join-report.json" \
     >"$run_dir/join.log"
 python3 -m eval.run_detectors --corpus-dir "$benign_corpus" \
