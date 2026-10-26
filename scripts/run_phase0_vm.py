@@ -317,7 +317,7 @@ def main():
     parser.add_argument("--phase5", action="store_true",
                         help="run the local injection suite against a provisioned model guest")
     parser.add_argument("--phase6", action="store_true",
-                        help="run naive and adaptive local mimicry attacks against the monitor")
+                        help="run local naive and adaptive mimicry strategies against the monitor")
     parser.add_argument("--phase7", action="store_true",
                         help="run detector, ablation, taxonomy and plot evaluation on saved guest data")
     parser.add_argument("--phase3-model-config", default="config/model.json",

@@ -96,43 +96,23 @@ python3 -m tripwire.join --events "$run_dir/events.jsonl" --calls "$run_dir/call
 python3 -m eval.run_detectors --corpus-dir "$benign_corpus" \
     --attack-dir "$run_dir" --output-dir "$run_dir/detector-eval" \
     >"$run_dir/detector-eval.log"
-python3 - "$run_dir" "$runner_status" <<'PY'
+PYTHONPATH="$repo_dir" python3 - "$run_dir" "$runner_status" <<'PY'
 import json
-from collections import defaultdict
 from pathlib import Path
 import sys
+
+from attacker.report import summarize_campaign
 
 run_dir = Path(sys.argv[1])
 runner_status = int(sys.argv[2])
 runs = [json.loads(line) for line in (run_dir / "runs.jsonl").read_text().splitlines() if line]
 if runner_status:
     raise SystemExit(f"mimicry runner exited {runner_status}; inspect {run_dir / 'runner.log'}")
-verdicts = [json.loads(line) for line in
-            (run_dir / "detector-eval/attack-verdicts.jsonl").read_text().splitlines() if line]
-summary = {}
-for mode in ("off", "on"):
-    row = next((item for item in runs if item["knowledge"] == mode), None)
-    if row is None:
-        raise SystemExit(f"missing attacker knowledge mode {mode}")
-    selected = [item for item in verdicts if item["knowledge"] == mode]
-    grouped = defaultdict(list)
-    for item in selected:
-        grouped[(item["detector"], str(item["target_false_positive_rate"]))].append(item)
-    summary[mode] = {
-        "strategy": row["strategy"], "goal_achieved": row["goal_achieved"],
-        "detectors": {
-            f"{detector}@FPR={fpr}": {
-                "detected": sum(item["detected"] for item in entries),
-                "runs": len(entries),
-                "detection_rate": sum(item["detected"] for item in entries) / len(entries),
-            }
-            for (detector, fpr), entries in sorted(grouped.items())
-        },
-    }
 if not all(row["goal_achieved"] is True for row in runs):
     raise SystemExit("one or more fake-canary goals were not received by the local sink")
-report = {"runs": len(runs), "by_monitor_knowledge": summary,
-          "note": "Two deterministic tool-wrapper attacks; not a model hijack rate or population estimate."}
+verdicts = [json.loads(line) for line in
+            (run_dir / "detector-eval/attack-verdicts.jsonl").read_text().splitlines() if line]
+report = summarize_campaign(runs, verdicts)
 (run_dir / "mimicry-summary.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 print(json.dumps(report, sort_keys=True))
 PY

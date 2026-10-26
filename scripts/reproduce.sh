@@ -61,7 +61,7 @@ run_guest --base-guest --reuse-provisioned-base --overlay-name guest-phase3.qcow
 echo "Phase 5: execute local injection suite"
 run_guest --base-disk-name guest-phase3.qcow2 --reuse-provisioned-base \
     --overlay-name guest-phase5.qcow2 --phase5 --phase5-model-config "$model_config"
-echo "Phase 6: compare naive and adaptive mimicry"
+echo "Phase 6: compare naive and adaptive mimicry strategies"
 run_guest --base-disk-name guest-phase3.qcow2 --reuse-provisioned-base \
     --overlay-name guest-phase6.qcow2 --phase6
 echo "Phase 7: produce calibrated detector and taxonomy tables"
