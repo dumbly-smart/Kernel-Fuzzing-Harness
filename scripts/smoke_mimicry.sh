@@ -108,8 +108,6 @@ runner_status = int(sys.argv[2])
 runs = [json.loads(line) for line in (run_dir / "runs.jsonl").read_text().splitlines() if line]
 if runner_status:
     raise SystemExit(f"mimicry runner exited {runner_status}; inspect {run_dir / 'runner.log'}")
-if not all(row["goal_achieved"] is True for row in runs):
-    raise SystemExit("one or more fake-canary goals were not received by the local sink")
 verdicts = [json.loads(line) for line in
             (run_dir / "detector-eval/attack-verdicts.jsonl").read_text().splitlines() if line]
 report = summarize_campaign(runs, verdicts)

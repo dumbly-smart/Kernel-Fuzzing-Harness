@@ -48,8 +48,11 @@ def summarize_campaign(
             "goal_achieved": run.get("goal_achieved"),
             "detectors": detector_results,
         }
+    goal_successes = sum(run.get("goal_achieved") is True for run in runs)
     return {
         "runs": len(runs),
+        "goal_successes": goal_successes,
+        "goal_success_rate": goal_successes / len(runs) if runs else None,
         "by_strategy": by_strategy,
         "note": "Deterministic tool-wrapper runs; not a model hijack rate or population estimate.",
     }

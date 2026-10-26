@@ -186,11 +186,14 @@ current acceptance state.
 
 ## Phase 6 adaptive mimicry
 
-The deterministic attacker runs two fake-canary actions against a loopback
-fixture: a shell-based naive request and an adaptive request that uses the
-benign fetch task's single `http_get` call and carries the canary in its query.
-The sink logs only the synthetic `TRIPWIRE-FAKE-CANARY-*` value. The adaptive
-request uses the same fixed guest-loopback port recorded in
+The deterministic attacker runs four fake-canary strategies against a
+loopback fixture: a shell-based naive request, a one-call adaptive request,
+an adaptive request padded with two local fetches, and a workspace-scoped
+canary read followed by a local fetch. Only the one-call request matches the
+fetch task's tool shape; the padded and file-scope profiles are experimental
+and are not calibrated to the current benign corpus. The sink logs only the
+synthetic `TRIPWIRE-FAKE-CANARY-*` value. Every request uses the same fixed
+guest-loopback port recorded in
 [`config/lab.json`](config/lab.json), so host-and-port allowlist features stay
 comparable across corpus and attack runs. The attacker uses no model and makes
 no claim about model hijack rates.
@@ -203,9 +206,10 @@ TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
   --memory-mib 2048 --disk-gib 24 --phase6
 ```
 
-The smoke target trains/calibrates on the benign corpus and reports detection
-for both attacker knowledge modes at the configured FPR targets. Details and
-the limits of this proxy are in [Phase 6 notes](docs/notes/phase6.md).
+The smoke target trains/calibrates on the benign corpus and reports goal
+success and detector verdicts separately for each strategy at the configured
+FPR targets. Details and the limits of this proxy are in
+[Phase 6 notes](docs/notes/phase6.md).
 
 ## Phase 7 taxonomy and ablations
 

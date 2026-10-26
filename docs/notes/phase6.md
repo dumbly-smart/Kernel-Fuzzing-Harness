@@ -50,7 +50,8 @@ TMPDIR=/dev/shm python3 scripts/run_phase0_vm.py \
 naive, one-call adaptive, sequence-padded adaptive, and file-scope adaptive
 modes at the configured FPR targets. Full events, joined calls, canary
 receipts, scores, false positives, and verdicts are returned through the QEMU
-serial artifact channel.
+serial artifact channel. A failed canary goal remains in the summary with its
+detector results, so attacker utility and monitor detection are not conflated.
 
 ## Limits and acceptance
 
