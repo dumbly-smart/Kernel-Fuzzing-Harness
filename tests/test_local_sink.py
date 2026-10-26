@@ -7,6 +7,7 @@ import json
 import threading
 
 from tripwire.local_sink import make_server
+from tripwire.corpus import load_corpus
 
 
 class LocalSinkTests(unittest.TestCase):
@@ -26,6 +27,25 @@ class LocalSinkTests(unittest.TestCase):
             error.exception.close()
         finally:
             server.shutdown()
+            server.server_close()
+
+    def test_serves_all_new_mimicry_baseline_routes_from_task_definitions(self):
+        task_dir = Path(__file__).resolve().parents[1] / "tasks/benign"
+        tasks = load_corpus(task_dir)
+        server = make_server(tasks)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            base = f"http://127.0.0.1:{server.server_port}"
+            for route, marker in (("/fetch/7", "LOCAL_PAGE_MARKER_7"),
+                                  ("/fetch/8", "LOCAL_PAGE_MARKER_8"),
+                                  ("/fetch/9", "LOCAL_PAGE_MARKER_9"),
+                                  ("/fetch/10", "LOCAL_PAGE_MARKER_10")):
+                with self.subTest(route=route), urlopen(base + route, timeout=2) as response:
+                    self.assertEqual(response.read().decode(), marker)
+        finally:
+            server.shutdown()
+            thread.join()
             server.server_close()
 
     def test_canary_sink_accepts_bounded_posts_only_on_declared_route(self):
