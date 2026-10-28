@@ -93,6 +93,10 @@ packages; experimental sinks in later phases must be local.
 
 See [environment status](docs/ENVIRONMENT.md),
 [threat model](docs/THREAT_MODEL.md), and [Phase 0 notes](docs/notes/phase0.md).
+For a deeper maintainer guide, see [architecture](architecture.md),
+[contributor instructions](agents.md), [historical reports](reports.md),
+[implementation progress](progress.md), and the detailed
+[Tripwire explanation](explanation.md).
 
 ## Phase 1 tracer
 
