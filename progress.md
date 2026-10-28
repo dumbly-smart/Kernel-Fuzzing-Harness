@@ -50,6 +50,17 @@ running, and a 1,024 MiB run was stopped after heavy disk growth. The guard
 must remain enabled. A fresh measured corpus and corresponding Phase 6/7
 results require a launcher with stable memory headroom and free storage.
 
+After that refusal, the documented tiny-model fallback was tried with a
+1,024 MiB guest and 3,072 MiB guest-only swap using the cached tiny-model
+image. QEMU launched, but the guest serial log stopped at early kernel boot
+(`smpboot: x86: Booting SMP configuration:`); its 11,556-byte log did not
+advance for five minutes, QEMU showed no further disk progress, and no result
+marker or corpus files were returned. I interrupted the guest wait loop; the
+exact runner error was `KeyboardInterrupt` at `scripts/run_phase0_vm.py:584`
+while sleeping. This is an incomplete boot attempt, not a model/task failure
+or a corpus measurement. Its unique overlay and serial log remain under
+ignored `data/vm/` for diagnosis.
+
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
 preserve their config/model locks and inspect the phase notes before use.

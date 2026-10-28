@@ -79,7 +79,9 @@ profiles and the benign task directory now has 34 definitions, no new corpus
 or mimicry run has established results for those additions. The current
 development launcher attempt was refused before boot because `MemAvailable`
 was 3,216 MiB while the 2 GiB VM policy requires 4,096 MiB; see
-`progress.md`. No experiment result is inferred from that refusal.
+`progress.md`. A subsequent 1 GiB tiny-profile guest stopped making serial and
+disk progress during early kernel boot and was interrupted after five minutes.
+It returned no corpus files. Neither attempt is an experiment result.
 
 ## Reproduce or refresh reports
 
