@@ -89,7 +89,11 @@ failure for these attempts, not a guest-image failure. TCG has not been used
 for corpus measurement. A full Phase 3 attempt under TCG reached cloud-init,
 then the live host-memory guard stopped the VM at `MemAvailable=1918 MiB; need
 at least 2048 MiB (2x guest RAM)`. It returned no task result bundle. None of
-these runs is an experiment result.
+these runs is an experiment result. A later TCG attempt from the accepted base
+failed the environment lock because TCG reports `virtualization=qemu` while
+the KVM lock records `kvm`; its exported Phase 3 log was stale base-image data.
+The runner now uses a separate TCG lock and clears per-run artifacts, but a
+guest acceptance under that lock and any new corpus remain unmeasured.
 
 ## Reproduce or refresh reports
 

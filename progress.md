@@ -88,10 +88,24 @@ returned, and no corpus outcomes are inferred from this attempt. Host memory
 recovered after shutdown; host swap remained nearly full, so no immediate
 retry was started.
 
-The QEMU runner unit tests pass (32 tests), and the full unit suite passes
-(163 tests) after adding acceleration selection. The TCG evidence so far is
-an independent boot diagnostic that reached login; the repository runner
-started cloud-init under TCG but did not complete its acceptance path.
+An attempt from the accepted `guest.qcow2` backing image then reached cloud-init
+but exited before Phase 3. The guest reported `virtualization: qemu`; its
+existing pinned lock expects `virtualization: kvm`, so the exact check result
+was `environment differs from config/environment.lock.json`. The result
+bundle also contained the old `phase3-corpus.log` from the backing image, which
+reported 30 tasks and was not produced by this attempt. No run data is
+attributed to it.
+
+The runner now selects `config/environment.tcg.lock.json` for TCG and records
+the lock path. This lock carries the same pinned guest facts and packages as
+the KVM lock, with the observed virtualization value `qemu`; the next guest
+must validate the full lock before its results are usable. Startup also clears
+per-run logs, active run directories, and only the attack/evaluation outputs
+being regenerated, so a failed phase cannot re-export stale reports.
+
+The QEMU runner tests and full unit suite pass (171 tests). The TCG evidence
+so far is an independent boot diagnostic that reached login; the repository
+runner has not yet completed its acceptance path or a corpus run under TCG.
 
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;

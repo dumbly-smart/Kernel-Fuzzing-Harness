@@ -39,6 +39,18 @@
   `config/lab.json`. Keeping the same port across corpus and attack runs avoids
   treating a random ephemeral port as a behavioral deviation.
 
+## QEMU acceleration locks
+
+KVM remains the default runner backend and uses
+`config/environment.lock.json`. The explicit `--qemu-accel tcg` mode uses
+`config/environment.tcg.lock.json`, which pins the same guest configuration,
+kernel, and package set but records the observed `systemd-detect-virt` value
+`qemu`. The runner selects the matching lock and records its path in VM
+provenance. The guest check still compares every field; it does not ignore
+environment drift. TCG is much slower and may change model task utility and
+timing, so keep its measurements separate from KVM results. A successful full
+TCG acceptance and corpus run remain pending.
+
 ## Accepted guest — 2026-10-22
 
 Phase 0 acceptance passed on a disposable QEMU/KVM guest:
