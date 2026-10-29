@@ -46,6 +46,25 @@ def lock_matches(path, actual):
     return json.loads(path.read_text()) == actual
 
 
+def describe_lock_differences(expected, actual):
+    """Return stable, leaf-level diagnostics for a pinned lock mismatch."""
+    missing = object()
+    differences = []
+
+    def walk(expected_value, actual_value, path):
+        if isinstance(expected_value, dict) and isinstance(actual_value, dict):
+            for key in sorted(expected_value.keys() | actual_value.keys()):
+                child_path = f'{path}.{key}' if path else str(key)
+                walk(expected_value.get(key, missing), actual_value.get(key, missing), child_path)
+        elif expected_value != actual_value:
+            expected_text = '<missing>' if expected_value is missing else repr(expected_value)
+            actual_text = '<missing>' if actual_value is missing else repr(actual_value)
+            differences.append(f'{path}: expected {expected_text}, got {actual_text}')
+
+    walk(expected, actual, '')
+    return differences
+
+
 def resolve_environment_lock_path(path):
     """Resolve a named lock under config/ without accepting path escapes."""
     relative = Path(path)
@@ -106,8 +125,9 @@ def main():
     actual = {'configuration': config, 'environment': facts}
     if lock_path.exists():
         if not lock_matches(lock_path, actual):
-            errors.append('environment differs from config/environment.lock.json; '
-                          'restore the pinned guest; review upgrades explicitly')
+            expected = json.loads(lock_path.read_text())
+            details = '; '.join(describe_lock_differences(expected, actual))
+            errors.append(f'environment differs from {lock_path.relative_to(ROOT)}: {details}')
     elif args.record and not errors:
         with lock_path.open('x') as stream:
             json.dump(actual, stream, indent=2, sort_keys=True)

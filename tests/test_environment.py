@@ -77,3 +77,18 @@ class EnvironmentTests(unittest.TestCase):
             changed = json.loads(json.dumps(original))
             changed['configuration']['ubuntu_version'] = '22.04'
             self.assertFalse(env.lock_matches(path, changed))
+
+    def test_environment_lock_mismatch_lists_exact_differing_fields(self):
+        expected = {
+            'configuration': {'ubuntu_version': '24.04'},
+            'environment': {'virtualization': 'kvm', 'kernel': '6.8.0'},
+        }
+        actual = {
+            'configuration': {'ubuntu_version': '24.04'},
+            'environment': {'virtualization': 'qemu', 'kernel': '6.9.0'},
+        }
+
+        self.assertEqual(env.describe_lock_differences(expected, actual), [
+            "environment.kernel: expected '6.8.0', got '6.9.0'",
+            "environment.virtualization: expected 'kvm', got 'qemu'",
+        ])
