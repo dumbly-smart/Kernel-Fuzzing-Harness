@@ -76,6 +76,26 @@ def write_guest_artifacts(directory, files):
             (directory / name).write_text(files[name])
 
 
+def active_guest_artifact_phases(*, phase3, phase5, phase6, phase7):
+    """Return phase prefixes whose outputs belong in this run's result bundle."""
+    return {name for name, enabled in (
+        ('phase3', phase3), ('phase5', phase5),
+        ('phase6', phase6), ('phase7', phase7)) if enabled}
+
+
+def guest_result_collection_guard():
+    """Skip inactive phase paths before stat/read, including stale base-disk files."""
+    return (
+        "active_phases = set(json.loads('ACTIVE_PHASES_JSON'))\n"
+        "phase_artifacts = {'phase3', 'phase5', 'phase6', 'phase7'}\n"
+        "for name, path in ARTIFACT_PATHS:\n"
+        "    phase = name.partition('-')[0]\n"
+        "    if phase in phase_artifacts and phase not in active_phases:\n"
+        "        continue\n"
+        "    if pathlib.Path(path).exists():\n"
+        "        files[name] = pathlib.Path(path).read_text()\n")
+
+
 def validate_swap_mib(swap_mib):
     if (isinstance(swap_mib, bool) or not isinstance(swap_mib, int) or
             swap_mib < 0 or swap_mib > 4096):
@@ -495,7 +515,7 @@ fi
 python3 - "$status" <<'RESULT'
 import base64, hashlib, json, pathlib, sys
 files = {}
-for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/setup-repeat.log',
+ARTIFACT_PATHS = {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/setup-repeat.log',
                    'acceptance.log': '/root/acceptance.log', 'smoke.log': '/root/smoke.log',
                    'smoke-agent-join.log': '/root/smoke-agent-join.log',
                    'smoke-events.jsonl': '/opt/tripwire/data/phase1-smoke.events.jsonl',
@@ -569,9 +589,8 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase7-ablation-false-positives.jsonl': '/opt/tripwire/data/injection-corpus/ablation-eval/false-positives.jsonl',
                    'phase7-ablation-attack-verdicts.jsonl': '/opt/tripwire/data/injection-corpus/ablation-eval/attack-verdicts.jsonl',
                    'phase7-taxonomy-results.json': '/opt/tripwire/data/injection-corpus/taxonomy-results.json',
-                   'phase7-ablation-plot.svg': '/opt/tripwire/data/injection-corpus/ablation-eval/ablation-tpr.svg'}.items():
-    if pathlib.Path(path).exists():
-        files[name] = pathlib.Path(path).read_text()
+                   'phase7-ablation-plot.svg': '/opt/tripwire/data/injection-corpus/ablation-eval/ablation-tpr.svg'}.items()
+ARTIFACT_READ_GUARD
 payload = base64.b64encode(json.dumps({'status': int(sys.argv[1]), 'files': files}).encode()).decode()
 payload_sha256 = hashlib.sha256(payload.encode('ascii')).hexdigest()
 with open('/dev/ttyS0', 'w') as serial:
@@ -589,6 +608,12 @@ systemctl poweroff
     guest_script = guest_script.replace(
         '"REUSE_PROVISIONED"', f'"{str(reuse_provisioned_base).lower()}"')
     guest_script = guest_script.replace('RUN_STARTUP_CLEANUP', startup_cleanup)
+    guest_script = guest_script.replace('ARTIFACT_READ_GUARD',
+                                        guest_result_collection_guard())
+    guest_script = guest_script.replace(
+        'ACTIVE_PHASES_JSON', json.dumps(sorted(active_guest_artifact_phases(
+            phase3=options.phase3, phase5=options.phase5,
+            phase6=options.phase6, phase7=options.phase7))))
     guest_script = guest_script.replace('ENVIRONMENT_LOCK_PATH', environment_lock)
     guest_script = guest_script.replace('"PHASE3" = "true"',
                                         f'"{str(options.phase3).lower()}" = "true"')

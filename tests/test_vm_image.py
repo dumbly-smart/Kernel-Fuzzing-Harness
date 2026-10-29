@@ -125,6 +125,21 @@ class ImageVerificationTests(unittest.TestCase):
         self.assertIn('rm -rf /opt/tripwire/data/injection-corpus', commands)
         self.assertNotIn('/opt/tripwire/data/phase3-corpus', commands)
 
+    def test_guest_artifact_prefixes_include_only_requested_phases(self):
+        self.assertEqual(vm.active_guest_artifact_phases(
+            phase3=True, phase5=False, phase6=False, phase7=False), {'phase3'})
+        self.assertEqual(vm.active_guest_artifact_phases(
+            phase3=False, phase5=True, phase6=True, phase7=False),
+            {'phase5', 'phase6'})
+
+    def test_guest_result_collector_skips_inactive_phase_files_before_reading(self):
+        script = vm.guest_result_collection_guard()
+
+        self.assertIn("phase_artifacts = {'phase3', 'phase5', 'phase6', 'phase7'}", script)
+        self.assertIn('if phase in phase_artifacts and phase not in active_phases:', script)
+        self.assertLess(script.index('if phase in phase_artifacts'),
+                        script.index("pathlib.Path(path).read_text()"))
+
     def test_guest_startup_cleanup_rejects_untrusted_run_directory_names(self):
         with self.assertRaisesRegex(ValueError, 'unexpected name'):
             vm.guest_startup_cleanup_commands(
