@@ -86,7 +86,10 @@ The host journal recorded KVM VMCS read/write errors and QEMU logged
 generic `qemu64` CPU model. The same base image reached the Ubuntu login prompt
 under a two-vCPU TCG boot-only diagnostic. That establishes a host KVM-path
 failure for these attempts, not a guest-image failure. TCG has not been used
-for corpus measurement. Neither attempt is an experiment result.
+for corpus measurement. A full Phase 3 attempt under TCG reached cloud-init,
+then the live host-memory guard stopped the VM at `MemAvailable=1918 MiB; need
+at least 2048 MiB (2x guest RAM)`. It returned no task result bundle. None of
+these runs is an experiment result.
 
 ## Reproduce or refresh reports
 

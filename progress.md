@@ -78,10 +78,20 @@ task success and timing, so its measurements must remain identified as TCG
 runs rather than pooled silently with KVM data. No corpus run has yet been
 completed with this option.
 
+A full Phase 3 attempt was then made through the new runner option with the
+1,024 MiB tiny-model guest and 3,072 MiB guest swap. TCG booted far enough to
+start cloud-init, but the runner stopped QEMU when its live guard observed
+`MemAvailable=1918 MiB; need at least 2048 MiB (2x guest RAM)`. The exact
+exception was `RuntimeError: host memory headroom fell below 2048 MiB during
+guest run`. QEMU was terminated by the runner, no task result bundle was
+returned, and no corpus outcomes are inferred from this attempt. Host memory
+recovered after shutdown; host swap remained nearly full, so no immediate
+retry was started.
+
 The QEMU runner unit tests pass (32 tests), and the full unit suite passes
 (163 tests) after adding acceleration selection. The TCG evidence so far is
-only the independent boot diagnostic, not the repository runner's full
-acceptance path.
+an independent boot diagnostic that reached login; the repository runner
+started cloud-init under TCG but did not complete its acceptance path.
 
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
