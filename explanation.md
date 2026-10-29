@@ -106,6 +106,18 @@ minimum and 3,022 MiB against a 3,072 MiB minimum, respectively. The records
 for these failures are guard evidence only, not guest results. See
 `progress.md` for the exact command and remaining Phase 3 status.
 
+Later retries began when host memory recovered. The 2 GiB guest booted but
+stopped at the runtime guard's exact value of 4,019 MiB available against a
+4,096 MiB requirement. The 1.5 GiB guest passed startup, verified the cached
+model, and reached the corpus stage before stopping at 3,019 MiB available
+against a 3,072 MiB requirement. Neither run emitted the result metadata
+marker, task rows, or a complete artifact bundle. Since both were terminated
+by a host safety check, they say nothing about task success or model output.
+Together with the completed 1 GiB diagnostic's 0/1 task success, the runs show
+that the current host cannot provide enough sustained memory to test whether
+extra guest RAM improves TCG inference. Preserve these interrupted overlays
+and treat the Phase 3 corpus as pending.
+
 `data/vm/` stores large images, logs, and ignored output bundles. Its files
 are not committed by default. The committed `config/` files and environment
 docs identify desired dependency/model versions; per-run manifests and locks

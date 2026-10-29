@@ -168,6 +168,18 @@ host/backend with sufficient headroom and model inference that completes under
 the pinned request limit; repeating this one-task TCG profile on the same
 conditions is unlikely to produce usable task traces.
 
+After the initial headroom refusals, host memory temporarily recovered enough
+to start two more attempts from the same provisioned base. The 2,048 MiB run
+booted and reached model startup, but the live guard stopped the host run at
+`MemAvailable=4019 MiB; need at least 4096 MiB (2x guest RAM)`. The 1,536 MiB
+run passed its initial guard, booted, verified the cached model, and reached
+`phase3-corpus`, but the live guard stopped it at
+`MemAvailable=3019 MiB; need at least 3072 MiB (2x guest RAM)`. Neither serial
+log contained a `TRIPWIRE_RESULT_META` marker, and neither returned task rows
+or a complete bundle. These are host-resource stops, not task outcomes. The
+interrupted overlays were preserved. With the current host load and guard
+policy, increasing guest RAM is not a viable way to recover inference utility.
+
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
 preserve their config/model locks and inspect the phase notes before use.

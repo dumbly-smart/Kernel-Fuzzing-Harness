@@ -75,7 +75,11 @@ events and zero tool calls make its all-orphan event count unsuitable for join
 evaluation. Treat this as VM handoff/export success and model utility failure,
 not a corpus measurement. Two higher-memory launches were blocked by the live
 guard at 4,056/4,096 MiB available for a 2,048 MiB guest and 3,022/3,072 MiB
-for a 1,536 MiB guest; neither booted or produced artifacts.
+for a 1,536 MiB guest in earlier attempts; neither booted. Two later launches
+did boot after temporary headroom recovery, but the runtime guard stopped the
+2,048 MiB guest at 4,019/4,096 MiB and the 1,536 MiB guest at 3,019/3,072 MiB.
+Neither produced the result metadata marker or a complete bundle. More details
+are in `progress.md`.
 
 ## Accepted guest — 2026-10-22
 

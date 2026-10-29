@@ -123,6 +123,11 @@ not be reported as corpus join quality. Higher-memory variants were stopped
 before boot by the host guard: 2,048 MiB guest RAM at 4,056 MiB available
 (4,096 MiB required), and 1,536 MiB guest RAM at 3,022 MiB available
 (3,072 MiB required). No result bundles were produced for those attempts.
+Two later launches began after host headroom recovered. The 2,048 MiB guest
+booted but the runtime guard stopped it at 4,019/4,096 MiB available; the
+1,536 MiB guest reached model startup and `phase3-corpus` but stopped at
+3,019/3,072 MiB. Both lacked the result metadata marker and returned no task
+rows or complete bundle. They add no task-success or detector measurements.
 
 ## Reproduce or refresh reports
 
