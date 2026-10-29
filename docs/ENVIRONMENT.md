@@ -48,8 +48,12 @@ kernel, and package set but records the observed `systemd-detect-virt` value
 `qemu`. The runner selects the matching lock and records its path in VM
 provenance. The guest check still compares every field; it does not ignore
 environment drift. TCG is much slower and may change model task utility and
-timing, so keep its measurements separate from KVM results. A successful full
-TCG acceptance and corpus run remain pending.
+timing, so keep its measurements separate from KVM results. Phase 0 acceptance
+also passed under TCG on 2026-10-29 using the accepted base image, 1,024 MiB
+guest RAM, and 3,072 MiB guest-only swap. The selected lock matched
+`virtualization: qemu`; `make check`, 174 unit tests, the eBPF smoke test, and
+agent-join smoke test passed. The tracer smoke reported 230 events and zero
+drops. A Phase 3 corpus run under TCG remains pending.
 
 ## Accepted guest — 2026-10-22
 

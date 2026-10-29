@@ -85,15 +85,15 @@ The host journal recorded KVM VMCS read/write errors and QEMU logged
 `KVM: entry failed, hardware error 0x0`; this repeated with one vCPU and a
 generic `qemu64` CPU model. The same base image reached the Ubuntu login prompt
 under a two-vCPU TCG boot-only diagnostic. That establishes a host KVM-path
-failure for these attempts, not a guest-image failure. TCG has not been used
-for corpus measurement. A full Phase 3 attempt under TCG reached cloud-init,
-then the live host-memory guard stopped the VM at `MemAvailable=1918 MiB; need
-at least 2048 MiB (2x guest RAM)`. It returned no task result bundle. None of
-these runs is an experiment result. A later TCG attempt from the accepted base
-failed the environment lock because TCG reports `virtualization=qemu` while
-the KVM lock records `kvm`; its exported Phase 3 log was stale base-image data.
-The runner now uses a separate TCG lock and clears per-run artifacts, but a
-guest acceptance under that lock and any new corpus remain unmeasured.
+failure for these attempts, not a guest-image failure. A Phase 3 attempt under
+TCG reached cloud-init, then the live host-memory guard stopped the VM at
+`MemAvailable=1987 MiB; need at least 2048 MiB (2x guest RAM)`. It returned no
+task result bundle and is not an experiment result. A subsequent Phase 0 run
+from the accepted base completed under TCG with its separate lock:
+`virtualization=qemu`, the pinned Ubuntu 24.04.5/kernel/package facts, and
+cgroup v2 all matched. `make check`, 174 unit tests, the eBPF smoke test, and
+agent-join smoke test passed; the tracer emitted 230 events with zero drops.
+No corpus was run, so TCG model utility and corpus behavior remain unmeasured.
 
 ## Reproduce or refresh reports
 

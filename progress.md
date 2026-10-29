@@ -84,28 +84,30 @@ start cloud-init, but the runner stopped QEMU when its live guard observed
 `MemAvailable=1918 MiB; need at least 2048 MiB (2x guest RAM)`. The exact
 exception was `RuntimeError: host memory headroom fell below 2048 MiB during
 guest run`. QEMU was terminated by the runner, no task result bundle was
-returned, and no corpus outcomes are inferred from this attempt. Host memory
-recovered after shutdown; host swap remained nearly full, so no immediate
-retry was started.
+returned, and no corpus outcomes are inferred from this attempt.
 
 An attempt from the accepted `guest.qcow2` backing image then reached cloud-init
-but exited before Phase 3. The guest reported `virtualization: qemu`; its
-existing pinned lock expects `virtualization: kvm`, so the exact check result
-was `environment differs from config/environment.lock.json`. The result
-bundle also contained the old `phase3-corpus.log` from the backing image, which
-reported 30 tasks and was not produced by this attempt. No run data is
-attributed to it.
+but exited before Phase 3. At that time, the guest reported `virtualization:
+qemu` while the runner selected the KVM lock, and the returned
+`phase3-corpus.log` was stale data from the base image. No run data is
+attributed to that attempt.
 
 The runner now selects `config/environment.tcg.lock.json` for TCG and records
 the lock path. This lock carries the same pinned guest facts and packages as
-the KVM lock, with the observed virtualization value `qemu`; the next guest
-must validate the full lock before its results are usable. Startup also clears
+the KVM lock, with the observed virtualization value `qemu`. Startup clears
 per-run logs, active run directories, and only the attack/evaluation outputs
-being regenerated, so a failed phase cannot re-export stale reports.
+being regenerated. The result exporter also skips inactive phase paths before
+checking or reading them, preventing stale large files from an immutable base
+image from delaying or contaminating handoff.
 
-The QEMU runner tests and full unit suite pass (171 tests). The TCG evidence
-so far is an independent boot diagnostic that reached login; the repository
-runner has not yet completed its acceptance path or a corpus run under TCG.
+On 2026-10-29, the runner completed Phase 0 under TCG using the accepted base,
+1,024 MiB guest RAM, and 3,072 MiB guest-only swap. The selected TCG lock
+matched: Ubuntu 24.04.5, kernel `6.8.0-146-generic`, `virtualization: qemu`,
+and cgroup v2. `make check`, all 174 unit tests, the eBPF smoke test, and the
+agent-join smoke test passed. The tracer smoke produced 230 events with zero
+dropped events. This validates Phase 0 under TCG; Phase 3 corpus execution is
+still pending, and TCG timing/task utility must remain separately identified.
+The host-side 1,987 MiB headroom stop remains a valid failed Phase 3 attempt.
 
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
