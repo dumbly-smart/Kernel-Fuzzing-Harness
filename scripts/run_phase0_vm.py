@@ -111,6 +111,17 @@ def nocloud_seed_qemu_args(seed_iso):
             '-smbios', 'type=1,serial=ds=nocloud']
 
 
+def qemu_acceleration_args(acceleration):
+    """Select a guest CPU mode explicitly; never silently fall back from KVM."""
+    if acceleration == 'kvm':
+        return ['-enable-kvm', '-cpu', 'host']
+    if acceleration == 'tcg':
+        # TCG boots on hosts whose KVM path is unavailable or broken, but runs
+        # much more slowly and can change model task success and timing.
+        return ['-accel', 'tcg,thread=multi', '-cpu', 'max']
+    raise ValueError('qemu acceleration must be kvm or tcg')
+
+
 def phase3_run_directory():
     """Give each corpus attempt its own path so failed runs remain inspectable."""
     return f'data/phase3-corpus-{uuid.uuid4().hex[:12]}'
@@ -304,6 +315,8 @@ def main():
                         help="skip apt provisioning and update the environment lock on an accepted --base-guest")
     parser.add_argument("--memory-mib", type=int, default=2048,
                         help="guest memory in MiB (default: 2048)")
+    parser.add_argument("--qemu-accel", choices=("kvm", "tcg"), default="kvm",
+                        help="QEMU acceleration backend (default: kvm; tcg is slower)")
     parser.add_argument("--swap-mib", type=int, default=0,
                         help="optional guest-only swap file in MiB (default: 0)")
     parser.add_argument("--disk-gib", type=int, default=12,
@@ -552,7 +565,8 @@ systemctl poweroff
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(base_disk), str(overlay), f'{disk_gib}G'])
-    qemu_args = ['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', str(memory_mib),
+    qemu_args = ['qemu-system-x86_64', *qemu_acceleration_args(options.qemu_accel),
+            '-smp', '2', '-m', str(memory_mib),
             '-drive', f'file={overlay},if=virtio,format=qcow2', '-display', 'none',
             '-serial', f'file:{VM / "serial.log"}', '-monitor', 'none',
             '-netdev', 'user,id=net0', '-device', 'virtio-net-pci,netdev=net0']
@@ -562,6 +576,7 @@ systemctl poweroff
                   'base_guest_disk': str(base_disk) if options.base_guest or options.base_disk_name else None,
                   'base_guest_provenance': str(VM / 'provenance.json') if options.base_guest or options.base_disk_name else None,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
+                  'qemu_acceleration': options.qemu_accel,
                   'memory_mib': memory_mib, 'disk_gib': disk_gib,
                   'swap_mib': swap_mib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,

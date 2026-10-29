@@ -92,6 +92,18 @@ class ImageVerificationTests(unittest.TestCase):
             '-drive', 'file=/tmp/tripwire-seed.iso,media=cdrom,readonly=on',
             '-smbios', 'type=1,serial=ds=nocloud'])
 
+    def test_kvm_acceleration_uses_host_cpu_model(self):
+        self.assertEqual(vm.qemu_acceleration_args('kvm'), [
+            '-enable-kvm', '-cpu', 'host'])
+
+    def test_tcg_acceleration_uses_emulated_cpu_model(self):
+        self.assertEqual(vm.qemu_acceleration_args('tcg'), [
+            '-accel', 'tcg,thread=multi', '-cpu', 'max'])
+
+    def test_qemu_acceleration_rejects_unknown_backend(self):
+        with self.assertRaisesRegex(ValueError, 'qemu acceleration must be kvm or tcg'):
+            vm.qemu_acceleration_args('hvf')
+
     def test_phase3_run_directories_are_unique_and_inside_data(self):
         first = vm.phase3_run_directory()
         second = vm.phase3_run_directory()
