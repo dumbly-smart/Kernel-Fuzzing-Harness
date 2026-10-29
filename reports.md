@@ -101,6 +101,14 @@ artifact marker, so it supplies no corpus rows or utility measurement. The
 overlay was about 4.8 GiB and host memory stayed above the runtime guard. The
 current 34 tasks × 3 seeds imply 102 runs; the timeout predates newly added
 serial progress forwarding, so completed task count is unknown.
+With task progress forwarding enabled, the next TCG attempt emitted one
+diagnostic row after about 28 minutes: `edit-01-seed-11` failed with
+`local Ollama chat request failed: timed out` under the profile's 180-second
+request timeout. The guest was interrupted after this first timeout; the host
+reported `KeyboardInterrupt` in its QEMU polling loop, and no complete corpus
+bundle was returned. This is evidence of model/runtime utility failure for
+that attempt only, not a complete Phase 3 result. The latest model-install
+progress forwarding change has not yet been tested in a guest.
 
 ## Reproduce or refresh reports
 

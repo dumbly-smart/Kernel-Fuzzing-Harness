@@ -56,8 +56,11 @@ agent-join smoke test passed. The tracer smoke reported 230 events and zero
 drops. A Phase 3 corpus run under TCG remains pending.
 The first full 34-task × 3-seed TCG attempt exceeded its 3,600-second runner
 limit before the result bundle was returned; it is not a corpus measurement.
-The smoke script now forwards per-run summaries over serial for the next
-diagnostic attempt.
+A later attempt streamed its first run summary, which reported the pinned
+Ollama request timeout after about 28 minutes of QEMU runtime. It was
+interrupted before the full suite and returned no corpus bundle. The runner
+now also streams model installation output and stage markers; that addition
+still needs a guest run. Details are in `progress.md`.
 
 ## Accepted guest — 2026-10-22
 

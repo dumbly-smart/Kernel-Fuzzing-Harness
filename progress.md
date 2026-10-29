@@ -127,6 +127,20 @@ suite grew to 34 tasks (102 runs at three seeds). These changes have unit and
 shell-syntax coverage but have not yet been exercised in a guest. A complete
 Phase 3 corpus under TCG remains unmeasured.
 
+A follow-up used a 7,200-second limit and the new per-task serial forwarding.
+The first emitted row was `edit-01-seed-11`, with
+`RuntimeError: local Ollama chat request failed: timed out`; the selected model
+profile sets an HTTP request timeout of 180 seconds. That row appeared after
+about 28 minutes of QEMU runtime. I interrupted the guest after this first
+failure rather than spend the remaining time repeating the same timeout across
+the other tasks. The exact host-side interruption was `KeyboardInterrupt` in
+the runner's QEMU polling loop, and no complete artifact bundle was returned.
+The diagnostic row is visible in ignored `data/vm/serial.log` but is not a
+corpus artifact. Host memory stayed above the guard. A later code commit added
+serial stage markers and Ollama installer output; that additional visibility
+has not yet been exercised in a guest. A usable Phase 3 corpus still requires
+a VM/model combination whose inference completes within the pinned limits.
+
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
 preserve their config/model locks and inspect the phase notes before use.
