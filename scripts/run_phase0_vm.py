@@ -212,6 +212,27 @@ def validate_phase3_seeds(seeds):
     return list(seeds)
 
 
+def phase3_model_seed_files(config_path, lock_path):
+    """Carry the selected config into the guest independently of the repo archive."""
+    config_file = (ROOT / config_path).resolve()
+    config_root = (ROOT / 'config').resolve()
+    if not config_file.is_relative_to(config_root) or not config_file.is_file():
+        raise ValueError('Phase 3 model config must be a tracked config/*.json file')
+    files = [{
+        'path': '/root/phase3-model-config.json',
+        'permissions': '0644',
+        'content': config_file.read_text(),
+    }]
+    lock_file = (ROOT / lock_path).resolve()
+    if lock_file.is_relative_to(config_root) and lock_file.is_file():
+        files.append({
+            'path': '/root/phase3-model-lock.json',
+            'permissions': '0644',
+            'content': lock_file.read_text(),
+        })
+    return files
+
+
 def phase6_run_directory():
     """Keep each mimicry attempt isolated from stale or failed run artifacts."""
     return f'data/mimicry-corpus-{uuid.uuid4().hex[:12]}'
@@ -523,6 +544,12 @@ if [ "$status" -eq 0 ]; then
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
+    install -D -m 0644 /root/phase3-model-config.json "/opt/tripwire/PHASE3_MODEL_CONFIG"
+    if [ -f /root/phase3-model-lock.json ]; then
+        install -D -m 0644 /root/phase3-model-lock.json "/opt/tripwire/PHASE3_MODEL_LOCK"
+    fi
+fi
+if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
     printf '%s\n' 'TRIPWIRE_STAGE=model-install' > /dev/ttyS0
     bash /opt/tripwire/scripts/install_local_model.sh --record-lock --model-config "PHASE3_MODEL_CONFIG" 2>&1 | tee /dev/ttyS0 > /root/model-install.log
     pipeline_status=("${PIPESTATUS[@]}")
@@ -670,9 +697,14 @@ systemctl poweroff
     guest_script = guest_script.replace('RESULT_CHUNK_CHARS', str(RESULT_CHUNK_CHARS))
     unit = '[Unit]\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nExecStart=/root/accept.sh\nTimeoutStartSec=infinity\n[Install]\nWantedBy=multi-user.target\n'
     # JSON is valid YAML; avoid a host PyYAML dependency.
+    write_files = [
+        {'path': '/root/accept.sh', 'permissions': '0700', 'content': guest_script},
+        {'path': '/etc/systemd/system/tripwire-phase0.service', 'content': unit},
+    ]
+    if options.phase3:
+        write_files.extend(phase3_model_seed_files(phase3_model_config, phase3_model_lock))
     config = {'package_update': False, 'package_upgrade': False,
-              'write_files': [{'path': '/root/accept.sh', 'permissions': '0700', 'content': guest_script},
-                              {'path': '/etc/systemd/system/tripwire-phase0.service', 'content': unit}],
+              'write_files': write_files,
               'runcmd': [['bash', '-c', cloud_init_bootstrap_command(swap_mib)]]}
     handler = functools.partial(SimpleHTTPRequestHandler, directory=str(seed))
     server = ThreadingHTTPServer(('127.0.0.1', 0), handler)

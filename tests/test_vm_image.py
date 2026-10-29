@@ -122,6 +122,21 @@ class ImageVerificationTests(unittest.TestCase):
             with self.subTest(seeds=seeds), self.assertRaises(ValueError):
                 vm.validate_phase3_seeds(seeds)
 
+    def test_phase3_model_config_and_existing_lock_are_carried_in_seed(self):
+        files = vm.phase3_model_seed_files(
+            Path('config/model.tcg-diagnostic.json'),
+            Path('config/model.tcg-diagnostic.lock.json'))
+        by_path = {item['path']: item for item in files}
+
+        self.assertEqual(
+            by_path['/root/phase3-model-config.json']['content'],
+            (Path(__file__).resolve().parents[1] /
+             'config/model.tcg-diagnostic.json').read_text())
+        self.assertEqual(
+            by_path['/root/phase3-model-lock.json']['content'],
+            (Path(__file__).resolve().parents[1] /
+             'config/model.tcg-diagnostic.lock.json').read_text())
+
     def test_guest_startup_cleanup_removes_stale_run_logs_and_outputs(self):
         commands = vm.guest_startup_cleanup_commands(
             'data/phase3-corpus-012345abcdef',
