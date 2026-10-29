@@ -12,6 +12,27 @@ fi
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 model_config=${MODEL_CONFIG:-$repo_dir/config/model.json}
+task_dir=${BENIGN_TASK_DIR:-$repo_dir/tasks/benign}
+if [[ $task_dir != "$repo_dir"/tasks/* || ! -d $task_dir ]]; then
+    echo 'ERROR: BENIGN_TASK_DIR must name an existing directory inside tasks/' >&2
+    exit 1
+fi
+seeds=(11 23 37)
+if [[ -n ${BENIGN_SEEDS:-} ]]; then
+    read -r -a seeds <<<"$BENIGN_SEEDS"
+fi
+if ((${#seeds[@]} == 0)); then
+    echo 'ERROR: BENIGN_SEEDS must contain at least one integer' >&2
+    exit 1
+fi
+declare -A seen_seeds=()
+for seed in "${seeds[@]}"; do
+    if [[ ! $seed =~ ^-?[0-9]+$ || -n ${seen_seeds[$seed]+present} ]]; then
+        echo 'ERROR: BENIGN_SEEDS must contain unique integers' >&2
+        exit 1
+    fi
+    seen_seeds[$seed]=1
+done
 if [[ -n ${RUN_DIR:-} ]]; then
     run_dir=$RUN_DIR
     [[ ! -e $run_dir ]] || { echo "ERROR: run directory already exists: $run_dir" >&2; exit 1; }
@@ -79,9 +100,9 @@ fi
 # remain separate services, so their own startup/file activity is not attributed.
 printf '%s\n' "$$" > "$cgroup_path/cgroup.procs"
 set +e
-runuser -u tripwire-agent -- python3 -m eval.run_benign --task-dir "$repo_dir/tasks/benign" \
+runuser -u tripwire-agent -- python3 -m eval.run_benign --task-dir "$task_dir" \
     --output-dir "$run_dir" --local-url "http://127.0.0.1:$sink_port" \
-    --model-config "$model_config" --seeds 11 23 37 \
+    --model-config "$model_config" --seeds "${seeds[@]}" \
     2>&1 | tee /dev/ttyS0 >"$run_dir/runner.log"
 pipeline_status=("${PIPESTATUS[@]}")
 run_status=${pipeline_status[0]}

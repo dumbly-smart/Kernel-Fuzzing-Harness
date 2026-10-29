@@ -191,6 +191,27 @@ def phase3_run_directory():
     return f'data/phase3-corpus-{uuid.uuid4().hex[:12]}'
 
 
+def validate_phase3_task_dir(value):
+    if not isinstance(value, str) or not re.fullmatch(r'tasks/[A-Za-z0-9._/-]+', value):
+        raise ValueError('Phase 3 task directory must remain inside the tasks/ subtree')
+    relative = Path(value)
+    tasks_root = (ROOT / 'tasks').resolve()
+    if relative.is_absolute() or '..' in relative.parts or relative.parts[0] != 'tasks':
+        raise ValueError('Phase 3 task directory must remain inside the tasks/ subtree')
+    resolved = (ROOT / relative).resolve()
+    if not resolved.is_relative_to(tasks_root) or not resolved.is_dir():
+        raise ValueError('Phase 3 task directory must remain inside the tasks/ subtree')
+    return relative.as_posix()
+
+
+def validate_phase3_seeds(seeds):
+    if (not isinstance(seeds, (list, tuple)) or not seeds or
+            any(isinstance(seed, bool) or not isinstance(seed, int) for seed in seeds) or
+            len(seeds) != len(set(seeds))):
+        raise ValueError('Phase 3 seeds must be a non-empty list of unique integers')
+    return list(seeds)
+
+
 def phase6_run_directory():
     """Keep each mimicry attempt isolated from stale or failed run artifacts."""
     return f'data/mimicry-corpus-{uuid.uuid4().hex[:12]}'
@@ -399,6 +420,10 @@ def main():
                         help="run detector, ablation, taxonomy and plot evaluation on saved guest data")
     parser.add_argument("--phase3-model-config", default="config/model.json",
                         help="profile used by Phase 3 (paired model lock selected automatically)")
+    parser.add_argument("--phase3-task-dir", default="tasks/benign",
+                        help="task directory inside tasks/ to run in Phase 3")
+    parser.add_argument("--phase3-seeds", type=int, nargs="+", default=[11, 23, 37],
+                        help="Phase 3 run seeds (default: 11 23 37)")
     parser.add_argument("--phase5-model-config", default="config/model.json",
                         help="profile used by Phase 5 in an already provisioned guest")
     options = parser.parse_args()
@@ -421,6 +446,11 @@ def main():
         parser.error("phase3-model-config must be an existing config/*.json path")
     phase3_model_lock = phase3_model_config.with_name(
         f"{phase3_model_config.stem}.lock.json")
+    try:
+        phase3_task_dir = validate_phase3_task_dir(options.phase3_task_dir)
+        phase3_seeds = validate_phase3_seeds(options.phase3_seeds)
+    except ValueError as error:
+        parser.error(str(error))
     phase5_model_config = Path(options.phase5_model_config)
     if (phase5_model_config.is_absolute() or phase5_model_config.parent != Path("config") or
             phase5_model_config.suffix != ".json" or
@@ -503,7 +533,7 @@ if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
 fi
 if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
     printf '%s\n' 'TRIPWIRE_STAGE=phase3-corpus' > /dev/ttyS0
-    MODEL_CONFIG=/opt/tripwire/PHASE3_MODEL_CONFIG RUN_DIR=/opt/tripwire/PHASE3_RUN_DIR bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
+    MODEL_CONFIG=/opt/tripwire/PHASE3_MODEL_CONFIG RUN_DIR=/opt/tripwire/PHASE3_RUN_DIR BENIGN_TASK_DIR=/opt/tripwire/PHASE3_TASK_DIR BENIGN_SEEDS="PHASE3_SEEDS" bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE5" = "true" ]; then
@@ -625,6 +655,8 @@ systemctl poweroff
                                         f'"{str(options.phase3).lower()}" = "true"')
     guest_script = guest_script.replace('PHASE3_MODEL_CONFIG', str(phase3_model_config))
     guest_script = guest_script.replace('PHASE3_RUN_DIR', phase3_run_dir)
+    guest_script = guest_script.replace('PHASE3_TASK_DIR', phase3_task_dir)
+    guest_script = guest_script.replace('PHASE3_SEEDS', ' '.join(map(str, phase3_seeds)))
     guest_script = guest_script.replace('PHASE6_RUN_DIR', phase6_run_dir)
     guest_script = guest_script.replace('PHASE3_MODEL_LOCK', str(phase3_model_lock))
     guest_script = guest_script.replace('PHASE5_MODEL_LOCK', str(phase5_model_lock))
@@ -667,6 +699,8 @@ systemctl poweroff
                   'swap_mib': swap_mib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,
                   'phase3_run_dir': phase3_run_dir if options.phase3 else None,
+                  'phase3_task_dir': phase3_task_dir if options.phase3 else None,
+                  'phase3_seeds': phase3_seeds if options.phase3 else None,
                   'phase5': options.phase5, 'phase6': options.phase6, 'phase7': options.phase7,
                   'reuse_provisioned_base': reuse_provisioned_base,
                   'qemu_arguments': qemu_args, 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()}

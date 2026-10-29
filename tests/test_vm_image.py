@@ -106,6 +106,22 @@ class ImageVerificationTests(unittest.TestCase):
         self.assertEqual(vm.environment_lock_for_acceleration('tcg'),
                          'config/environment.tcg.lock.json')
 
+    def test_phase3_task_directory_must_remain_inside_tasks_tree(self):
+        self.assertEqual(vm.validate_phase3_task_dir('tasks/benign'), 'tasks/benign')
+        self.assertEqual(vm.validate_phase3_task_dir('tasks/diagnostic'), 'tasks/diagnostic')
+        with self.assertRaisesRegex(ValueError, 'tasks/ subtree'):
+            vm.validate_phase3_task_dir('../config')
+        with self.assertRaisesRegex(ValueError, 'tasks/ subtree'):
+            vm.validate_phase3_task_dir('/tmp/tasks')
+        with self.assertRaisesRegex(ValueError, 'tasks/ subtree'):
+            vm.validate_phase3_task_dir('tasks/$(id)')
+
+    def test_phase3_seed_list_must_be_nonempty_unique_integers(self):
+        self.assertEqual(vm.validate_phase3_seeds([11, 23, 37]), [11, 23, 37])
+        for seeds in ([], [11, 11], [True], ['11']):
+            with self.subTest(seeds=seeds), self.assertRaises(ValueError):
+                vm.validate_phase3_seeds(seeds)
+
     def test_guest_startup_cleanup_removes_stale_run_logs_and_outputs(self):
         commands = vm.guest_startup_cleanup_commands(
             'data/phase3-corpus-012345abcdef',
@@ -153,6 +169,10 @@ class ImageVerificationTests(unittest.TestCase):
 
         self.assertIn('expected_run_count = manifest["task_count"] * manifest["seed_count"]', script)
         self.assertNotIn('manifest["run_count"] != 90', script)
+        self.assertIn('BENIGN_TASK_DIR', script)
+        self.assertIn('BENIGN_SEEDS', script)
+        self.assertIn('--task-dir "$task_dir"', script)
+        self.assertIn('--seeds "${seeds[@]}"', script)
 
     def test_vm_runner_streams_model_install_progress_and_stage_marker(self):
         script = (Path(__file__).resolve().parents[1] /
