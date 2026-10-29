@@ -60,12 +60,26 @@ a Git archive and generated task fixtures over a temporary local server. The
 guest sends result artifacts back through the virtual serial channel. No
 shared folder is mounted, and host credentials are not copied into the guest.
 
+Result transfer has two integrity steps. Inside the guest, the runner gathers
+only the common setup/smoke outputs plus outputs for phases explicitly enabled
+for this invocation. It skips inactive phase prefixes before checking whether
+their paths exist or reading them; this matters when an immutable base image
+contains old corpus files. The selected files are encoded as JSON, Base64
+split into bounded serial lines, and accompanied by the encoded length and a
+SHA-256 digest. The host joins the chunks, verifies length and digest, decodes
+the JSON, and writes only artifact names in its fixed allowlist to `data/vm/`.
+An interrupted run before the result marker is complete is not a successful
+measurement. Active phase logs and traces can still be large, so result
+preparation itself may take time, especially under software emulation.
+
 The launcher checks available host memory before QEMU starts and periodically
 while it runs. The current policy is at least two times the configured guest
 RAM. This is only a guardrail: model memory use, filesystem growth, and host
 load can still prevent a run. A refusal before boot is not an experiment
 result. Keep the exact error in the run notes and retry only when conditions
-change enough to satisfy the same policy.
+change enough to satisfy the same policy. TCG Phase 0 acceptance passed on
+2026-10-29, while the Phase 3 TCG corpus run is still in progress or pending
+its returned artifacts; consult `progress.md` for its current measured state.
 
 `data/vm/` stores large images, logs, and ignored output bundles. Its files
 are not committed by default. The committed `config/` files and environment
