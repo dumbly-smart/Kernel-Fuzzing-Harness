@@ -137,6 +137,21 @@ class ImageVerificationTests(unittest.TestCase):
             (Path(__file__).resolve().parents[1] /
              'config/model.tcg-diagnostic.lock.json').read_text())
 
+    def test_phase3_model_config_can_be_seeded_before_first_model_install(self):
+        config_root = Path(__file__).resolve().parents[1] / 'config'
+        with tempfile.TemporaryDirectory(dir=config_root) as directory:
+            config_file = Path(directory) / 'model.unlocked.json'
+            lock_file = config_file.with_name('model.unlocked.lock.json')
+            config_file.write_text('{}')
+
+            files = vm.phase3_model_seed_files(
+                config_file.relative_to(vm.ROOT),
+                lock_file.relative_to(vm.ROOT))
+
+        self.assertEqual([item['path'] for item in files],
+                         ['/root/phase3-model-config.json'])
+        self.assertEqual(files[0]['content'], '{}')
+
     def test_guest_startup_cleanup_removes_stale_run_logs_and_outputs(self):
         commands = vm.guest_startup_cleanup_commands(
             'data/phase3-corpus-012345abcdef',

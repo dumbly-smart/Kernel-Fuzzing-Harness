@@ -66,6 +66,27 @@ class ModelLockTests(unittest.TestCase):
             Path("config/model.low-memory.lock.json"),
         )
 
+    def test_all_checked_in_model_locks_match_their_profiles(self):
+        repository = Path(__file__).resolve().parents[1]
+        config_root = repository / "config"
+        profiles = sorted(
+            path for path in config_root.glob("model*.json")
+            if not path.name.endswith(".lock.json")
+        )
+        self.assertTrue(profiles, "expected at least one checked-in model profile")
+        validated_locks = 0
+
+        for profile in profiles:
+            with self.subTest(profile=profile.name):
+                lock_path = repository / model_lock_path(profile.relative_to(repository))
+                if not lock_path.is_file():
+                    continue  # First-install profiles receive their lock from the guest.
+                config = json.loads(profile.read_text(encoding="utf-8"))
+                lock = json.loads(lock_path.read_text(encoding="utf-8"))
+                validate_model_lock(config, lock)
+                validated_locks += 1
+        self.assertGreater(validated_locks, 0, "expected at least one committed model lock")
+
     def test_accepts_matching_archive_model_and_manifest_pin(self):
         self.assertEqual(validate_model_lock(CONFIG, LOCK), LOCK)
 
