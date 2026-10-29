@@ -78,8 +78,10 @@ RAM. This is only a guardrail: model memory use, filesystem growth, and host
 load can still prevent a run. A refusal before boot is not an experiment
 result. Keep the exact error in the run notes and retry only when conditions
 change enough to satisfy the same policy. TCG Phase 0 acceptance passed on
-2026-10-29, while the Phase 3 TCG corpus run is still in progress or pending
-its returned artifacts; consult `progress.md` for its current measured state.
+2026-10-29. A later Phase 3 TCG attempt exceeded its 3,600-second timeout
+without returning artifacts; the next attempt will forward per-run summaries
+to serial so the completed task count is observable. See `progress.md` for the
+exact attempt parameters and current phase status.
 
 `data/vm/` stores large images, logs, and ignored output bundles. Its files
 are not committed by default. The committed `config/` files and environment

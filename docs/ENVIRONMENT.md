@@ -54,6 +54,10 @@ guest RAM, and 3,072 MiB guest-only swap. The selected lock matched
 `virtualization: qemu`; `make check`, 174 unit tests, the eBPF smoke test, and
 agent-join smoke test passed. The tracer smoke reported 230 events and zero
 drops. A Phase 3 corpus run under TCG remains pending.
+The first full 34-task × 3-seed TCG attempt exceeded its 3,600-second runner
+limit before the result bundle was returned; it is not a corpus measurement.
+The smoke script now forwards per-run summaries over serial for the next
+diagnostic attempt.
 
 ## Accepted guest — 2026-10-22
 

@@ -109,6 +109,24 @@ dropped events. This validates Phase 0 under TCG; Phase 3 corpus execution is
 still pending, and TCG timing/task utility must remain separately identified.
 The host-side 1,987 MiB headroom stop remains a valid failed Phase 3 attempt.
 
+The next Phase 3 TCG attempt used the accepted base, the same 1,024 MiB guest,
+3,072 MiB guest swap, and `config/model.tiny.json`, with a 3,600-second runner
+timeout. It ended with the exact error `RuntimeError: guest exceeded 3600
+second limit`. QEMU was stopped by the runner; the serial log had no complete
+result marker, so no guest logs, corpus rows, or success rate were returned.
+The overlay reached about 4.8 GiB. During the run, host memory headroom stayed
+above the two-times guard; the runner stopped on elapsed time, not memory.
+Because this run predated serial progress forwarding, its quiet serial output
+does not reveal how many of the 34 tasks × 3 seeds completed.
+
+After that timeout, the Phase 3 smoke script was updated to stream each flushed
+run summary to serial while continuing to save the full runner log in the
+guest. Its run-count check now derives the expected total from the manifest's
+task and seed counts; the previous hard-coded 90 was stale after the benign
+suite grew to 34 tasks (102 runs at three seeds). These changes have unit and
+shell-syntax coverage but have not yet been exercised in a guest. A complete
+Phase 3 corpus under TCG remains unmeasured.
+
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
 preserve their config/model locks and inspect the phase notes before use.

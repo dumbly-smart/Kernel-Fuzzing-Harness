@@ -94,6 +94,13 @@ from the accepted base completed under TCG with its separate lock:
 cgroup v2 all matched. `make check`, 174 unit tests, the eBPF smoke test, and
 agent-join smoke test passed; the tracer emitted 230 events with zero drops.
 No corpus was run, so TCG model utility and corpus behavior remain unmeasured.
+The next TCG Phase 3 attempt used a 1,024 MiB guest, 3,072 MiB guest swap,
+and the pinned 0.6B profile, but the runner stopped it at the exact 3,600-second
+limit (`guest exceeded 3600 second limit`). Its serial output had no complete
+artifact marker, so it supplies no corpus rows or utility measurement. The
+overlay was about 4.8 GiB and host memory stayed above the runtime guard. The
+current 34 tasks × 3 seeds imply 102 runs; the timeout predates newly added
+serial progress forwarding, so completed task count is unknown.
 
 ## Reproduce or refresh reports
 
