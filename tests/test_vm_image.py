@@ -140,6 +140,20 @@ class ImageVerificationTests(unittest.TestCase):
         self.assertLess(script.index('if phase in phase_artifacts'),
                         script.index("pathlib.Path(path).read_text()"))
 
+    def test_phase3_runner_streams_flushed_run_summaries_to_serial(self):
+        script = (Path(__file__).resolve().parents[1] /
+                  'scripts/smoke_benign_corpus.sh').read_text()
+
+        self.assertIn('tee /dev/ttyS0', script)
+        self.assertIn('run_status=${pipeline_status[0]}', script)
+
+    def test_phase3_runner_acceptance_tracks_current_task_and_seed_counts(self):
+        script = (Path(__file__).resolve().parents[1] /
+                  'scripts/smoke_benign_corpus.sh').read_text()
+
+        self.assertIn('expected_run_count = manifest["task_count"] * manifest["seed_count"]', script)
+        self.assertNotIn('manifest["run_count"] != 90', script)
+
     def test_guest_startup_cleanup_rejects_untrusted_run_directory_names(self):
         with self.assertRaisesRegex(ValueError, 'unexpected name'):
             vm.guest_startup_cleanup_commands(

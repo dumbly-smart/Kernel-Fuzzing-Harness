@@ -82,8 +82,12 @@ set +e
 runuser -u tripwire-agent -- python3 -m eval.run_benign --task-dir "$repo_dir/tasks/benign" \
     --output-dir "$run_dir" --local-url "http://127.0.0.1:$sink_port" \
     --model-config "$model_config" --seeds 11 23 37 \
-    >"$run_dir/runner.log" 2>&1
-run_status=$?
+    2>&1 | tee /dev/ttyS0 >"$run_dir/runner.log"
+pipeline_status=("${PIPESTATUS[@]}")
+run_status=${pipeline_status[0]}
+if (( pipeline_status[1] != 0 && run_status == 0 )); then
+    run_status=${pipeline_status[1]}
+fi
 set -e
 
 sleep 1
@@ -106,8 +110,11 @@ run_dir = Path(sys.argv[1])
 runner_status = int(sys.argv[2])
 manifest = json.loads((run_dir / "manifest.json").read_text())
 report = json.loads((run_dir / "corpus-summary.json").read_text())
-if manifest["run_count"] != 90:
-    raise SystemExit(f"expected 90 seeded task runs; recorded {manifest['run_count']}")
+expected_run_count = manifest["task_count"] * manifest["seed_count"]
+if manifest["run_count"] != expected_run_count:
+    raise SystemExit(
+        f"expected {expected_run_count} seeded task runs; recorded {manifest['run_count']}"
+    )
 if runner_status:
     raise SystemExit(f"corpus runner exited {runner_status}; inspect {run_dir / 'runner.log'}")
 print(json.dumps({
