@@ -33,7 +33,8 @@ GUEST_ARTIFACT_NAMES = (
     'setup.log', 'setup-repeat.log', 'acceptance.log', 'smoke.log',
     'smoke-agent-join.log', 'smoke-events.jsonl', 'phase2-events.jsonl',
     'phase2-calls.jsonl', 'phase2-joins.jsonl', 'phase2-join-report.json',
-    'environment.lock.json', 'model-install.log', 'model.lock.json',
+    'environment.lock.json', 'environment.tcg.lock.json',
+    'model-install.log', 'model.lock.json',
     'phase3-model-lock.json', 'phase5-model-lock.json', 'phase3-corpus.log',
     'phase3-manifest.json', 'phase3-summary.json', 'phase3-runs.jsonl',
     'phase3-calls.jsonl', 'phase3-events.jsonl', 'phase3-joined.jsonl',
@@ -120,6 +121,49 @@ def qemu_acceleration_args(acceleration):
         # much more slowly and can change model task success and timing.
         return ['-accel', 'tcg,thread=multi', '-cpu', 'max']
     raise ValueError('qemu acceleration must be kvm or tcg')
+
+
+def environment_lock_for_acceleration(acceleration):
+    if acceleration == 'kvm':
+        return 'config/environment.lock.json'
+    if acceleration == 'tcg':
+        return 'config/environment.tcg.lock.json'
+    raise ValueError('qemu acceleration must be kvm or tcg')
+
+
+def guest_startup_cleanup_commands(phase3_run_dir, phase6_run_dir, *, phase5, phase7):
+    """Remove artifacts that could otherwise be re-exported from the base disk."""
+    run_paths = []
+    for path, prefix in ((phase3_run_dir, 'data/phase3-corpus-'),
+                         (phase6_run_dir, 'data/mimicry-corpus-')):
+        if path is not None:
+            if not re.fullmatch(re.escape(prefix) + r'[a-f0-9]{12}', path):
+                raise ValueError('guest run directory has an unexpected name')
+            run_paths.append(f'/opt/tripwire/{path}')
+
+    logs = (
+        '/root/setup.log', '/root/setup-repeat.log', '/root/acceptance.log',
+        '/root/smoke.log', '/root/smoke-agent-join.log',
+        '/root/model-install.log', '/root/phase3-corpus.log',
+        '/root/phase5-injections.log', '/root/phase6-mimicry.log',
+        '/root/phase7-eval.log',
+        '/opt/tripwire/data/phase1-smoke.events.jsonl',
+        '/opt/tripwire/data/phase2-smoke.events.jsonl',
+        '/opt/tripwire/data/phase2-smoke.calls.jsonl',
+        '/opt/tripwire/data/phase2-smoke.joins.jsonl',
+        '/opt/tripwire/data/phase2-smoke.join-report.json',
+    )
+    commands = ['rm -f ' + ' '.join(logs)]
+    if run_paths:
+        commands.append('rm -rf ' + ' '.join(run_paths))
+    if phase5:
+        commands.append('rm -rf /opt/tripwire/data/injection-corpus')
+    elif phase7:
+        commands.append(
+            'rm -rf /opt/tripwire/data/injection-corpus/detector-eval '
+            '/opt/tripwire/data/injection-corpus/ablation-eval '
+            '/opt/tripwire/data/injection-corpus/taxonomy-results.json')
+    return '\n'.join(commands)
 
 
 def phase3_run_directory():
@@ -364,6 +408,7 @@ def main():
         parser.error("phase5-model-config must be an existing config/*.json path")
     phase5_model_lock = phase5_model_config.with_name(
         f"{phase5_model_config.stem}.lock.json")
+    environment_lock = environment_lock_for_acceleration(options.qemu_accel)
     if (options.phase5 or options.phase6 or options.phase7) and not reuse_provisioned_base:
         parser.error("--phase5/--phase6/--phase7 requires --reuse-provisioned-base on a provisioned corpus guest")
     if options.phase3 and options.phase5 and phase3_model_config != phase5_model_config:
@@ -381,6 +426,10 @@ def main():
     seed_iso = VM / 'nocloud-seed.iso'
     phase3_run_dir = phase3_run_directory()
     phase6_run_dir = phase6_run_directory()
+    startup_cleanup = guest_startup_cleanup_commands(
+        phase3_run_dir if options.phase3 else None,
+        phase6_run_dir if options.phase6 else None,
+        phase5=options.phase5, phase7=options.phase7)
     if overlay.exists():
         raise RuntimeError(f'{overlay} already exists; preserve it or remove it explicitly before a fresh run')
     command(['git', 'archive', '--format=tar', '-o', str(seed / 'repo.tar'), 'HEAD'], cwd=ROOT)
@@ -389,8 +438,10 @@ def main():
     guest_script = r'''#!/bin/bash
 set -uo pipefail
 cd /opt/tripwire
+RUN_STARTUP_CLEANUP
+export TRIPWIRE_ENVIRONMENT_LOCK="ENVIRONMENT_LOCK_PATH"
 if [ "REUSE_PROVISIONED" = "true" ]; then
-    python3 scripts/check_env.py --record > /root/setup.log 2>&1
+    python3 scripts/check_env.py --record --lock-path "$TRIPWIRE_ENVIRONMENT_LOCK" > /root/setup.log 2>&1
     status=$?
 else
 bash scripts/setup_vm.sh --disposable-guest > /root/setup.log 2>&1
@@ -410,7 +461,7 @@ fi
 if [ "$status" -eq 0 ]; then
     install -d -o ubuntu -g ubuntu /opt/tripwire/build
     chown -R ubuntu:ubuntu /opt/tripwire/build
-    su ubuntu -s /bin/bash -c 'cd /opt/tripwire && make check && make test' > /root/acceptance.log 2>&1
+    su ubuntu -s /bin/bash -c 'cd /opt/tripwire && make check ENVIRONMENT_LOCK="ENVIRONMENT_LOCK_PATH" && make test' > /root/acceptance.log 2>&1
     status=$?
 fi
 if [ "$status" -eq 0 ]; then
@@ -453,6 +504,7 @@ for name, path in {'setup.log': '/root/setup.log', 'setup-repeat.log': '/root/se
                    'phase2-joins.jsonl': '/opt/tripwire/data/phase2-smoke.joins.jsonl',
                    'phase2-join-report.json': '/opt/tripwire/data/phase2-smoke.join-report.json',
                    'environment.lock.json': '/opt/tripwire/config/environment.lock.json',
+                   'environment.tcg.lock.json': '/opt/tripwire/config/environment.tcg.lock.json',
                    'model-install.log': '/root/model-install.log',
                    'model.lock.json': '/opt/tripwire/config/model.lock.json',
                    'phase3-model-lock.json': '/opt/tripwire/PHASE3_MODEL_LOCK',
@@ -536,6 +588,8 @@ systemctl poweroff
 '''
     guest_script = guest_script.replace(
         '"REUSE_PROVISIONED"', f'"{str(reuse_provisioned_base).lower()}"')
+    guest_script = guest_script.replace('RUN_STARTUP_CLEANUP', startup_cleanup)
+    guest_script = guest_script.replace('ENVIRONMENT_LOCK_PATH', environment_lock)
     guest_script = guest_script.replace('"PHASE3" = "true"',
                                         f'"{str(options.phase3).lower()}" = "true"')
     guest_script = guest_script.replace('PHASE3_MODEL_CONFIG', str(phase3_model_config))
@@ -577,6 +631,7 @@ systemctl poweroff
                   'base_guest_provenance': str(VM / 'provenance.json') if options.base_guest or options.base_disk_name else None,
                   'qemu_version': subprocess.check_output(['qemu-system-x86_64', '--version'], text=True),
                   'qemu_acceleration': options.qemu_accel,
+                  'environment_lock': environment_lock,
                   'memory_mib': memory_mib, 'disk_gib': disk_gib,
                   'swap_mib': swap_mib,
                   'timeout_seconds': options.timeout_seconds, 'phase3': options.phase3,

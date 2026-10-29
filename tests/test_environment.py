@@ -22,6 +22,24 @@ class EnvironmentTests(unittest.TestCase):
     def test_supported_guest(self):
         self.assertEqual(env.validate(self.facts, self.config), [])
 
+    def test_environment_lock_path_accepts_config_lock_files(self):
+        self.assertEqual(
+            env.resolve_environment_lock_path('config/environment.tcg.lock.json'),
+            env.ROOT / 'config/environment.tcg.lock.json')
+
+    def test_environment_lock_path_rejects_paths_outside_config(self):
+        with self.assertRaisesRegex(ValueError, 'environment lock must be a config/\\*.json path'):
+            env.resolve_environment_lock_path('../environment.lock.json')
+
+    def test_tcg_lock_pins_the_observed_backend_and_same_guest_packages(self):
+        config_dir = env.ROOT / 'config'
+        kvm = json.loads((config_dir / 'environment.lock.json').read_text())
+        tcg = json.loads((config_dir / 'environment.tcg.lock.json').read_text())
+        expected = json.loads(json.dumps(kvm))
+        expected['environment']['virtualization'] = 'qemu'
+
+        self.assertEqual(tcg, expected)
+
     def test_host_and_missing_btf_are_errors(self):
         self.facts.update(virtualization='none', btf_readable=False)
         errors = env.validate(self.facts, self.config)

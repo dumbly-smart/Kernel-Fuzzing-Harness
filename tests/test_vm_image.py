@@ -100,6 +100,36 @@ class ImageVerificationTests(unittest.TestCase):
         self.assertEqual(vm.qemu_acceleration_args('tcg'), [
             '-accel', 'tcg,thread=multi', '-cpu', 'max'])
 
+    def test_qemu_acceleration_selects_matching_environment_lock(self):
+        self.assertEqual(vm.environment_lock_for_acceleration('kvm'),
+                         'config/environment.lock.json')
+        self.assertEqual(vm.environment_lock_for_acceleration('tcg'),
+                         'config/environment.tcg.lock.json')
+
+    def test_guest_startup_cleanup_removes_stale_run_logs_and_outputs(self):
+        commands = vm.guest_startup_cleanup_commands(
+            'data/phase3-corpus-012345abcdef',
+            'data/mimicry-corpus-fedcba987654',
+            phase5=False, phase7=True)
+
+        self.assertIn('/root/phase3-corpus.log', commands)
+        self.assertIn('rm -rf /opt/tripwire/data/phase3-corpus-012345abcdef', commands)
+        self.assertIn('/opt/tripwire/data/injection-corpus/detector-eval', commands)
+        self.assertNotIn('rm -rf /opt/tripwire/data/injection-corpus\n', commands)
+        self.assertNotIn('rm -rf /opt/tripwire/data/phase3-corpus\n', commands)
+
+    def test_guest_startup_cleanup_resets_attack_data_only_for_phase5(self):
+        commands = vm.guest_startup_cleanup_commands(
+            None, None, phase5=True, phase7=True)
+
+        self.assertIn('rm -rf /opt/tripwire/data/injection-corpus', commands)
+        self.assertNotIn('/opt/tripwire/data/phase3-corpus', commands)
+
+    def test_guest_startup_cleanup_rejects_untrusted_run_directory_names(self):
+        with self.assertRaisesRegex(ValueError, 'unexpected name'):
+            vm.guest_startup_cleanup_commands(
+                'data/phase3-corpus-../../root', None, phase5=False, phase7=False)
+
     def test_qemu_acceleration_rejects_unknown_backend(self):
         with self.assertRaisesRegex(ValueError, 'qemu acceleration must be kvm or tcg'):
             vm.qemu_acceleration_args('hvf')
@@ -144,6 +174,15 @@ class ImageVerificationTests(unittest.TestCase):
             capture_output=True, text=True)
 
         self.assertRegex(result.stdout, r"PYTHONPYCACHEPREFIX=.*id -u")
+
+    def test_make_check_accepts_an_alternate_environment_lock(self):
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            ["make", "-n", "check", "ENVIRONMENT_LOCK=config/environment.tcg.lock.json"],
+            cwd=root, check=True, capture_output=True, text=True)
+
+        self.assertIn("scripts/check_env.py --lock-path \"config/environment.tcg.lock.json\"",
+                      result.stdout)
 
     def test_decodes_chunked_guest_result_with_interleaved_console_output(self):
         result = {"status": 2, "files": {"phase3.log": "x" * 30000}}

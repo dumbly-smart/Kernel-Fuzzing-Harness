@@ -46,10 +46,29 @@ def lock_matches(path, actual):
     return json.loads(path.read_text()) == actual
 
 
+def resolve_environment_lock_path(path):
+    """Resolve a named lock under config/ without accepting path escapes."""
+    relative = Path(path)
+    if (relative.is_absolute() or relative.parent != Path('config') or
+            relative.suffix != '.json'):
+        raise ValueError('environment lock must be a config/*.json path')
+    resolved = (ROOT / relative).resolve()
+    if not resolved.is_relative_to((ROOT / 'config').resolve()):
+        raise ValueError('environment lock must be a config/*.json path')
+    return resolved
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--record', action='store_true')
+    parser.add_argument('--lock-path',
+                        default=os.environ.get('TRIPWIRE_ENVIRONMENT_LOCK',
+                                               'config/environment.lock.json'))
     args = parser.parse_args()
+    try:
+        lock_path = resolve_environment_lock_path(args.lock_path)
+    except ValueError as exc:
+        parser.error(str(exc))
     config = json.loads((ROOT / 'config/environment.json').read_text())
     release = platform.freedesktop_os_release()
     facts = {'os': [release.get('ID'), release.get('VERSION_ID')],
@@ -84,7 +103,6 @@ def main():
     except RuntimeError as exc:
         errors.append(str(exc))
     errors.extend(validate(facts, config))
-    lock_path = ROOT / 'config/environment.lock.json'
     actual = {'configuration': config, 'environment': facts}
     if lock_path.exists():
         if not lock_matches(lock_path, actual):

@@ -43,8 +43,9 @@ if [[ $(uname -r) != "$expected_kernel" ]]; then
     exit 1
 fi
 cd -- "$repo_dir"
-python3 scripts/check_env.py --record
-make check
+environment_lock=${TRIPWIRE_ENVIRONMENT_LOCK:-config/environment.lock.json}
+python3 scripts/check_env.py --record --lock-path "$environment_lock"
+make check ENVIRONMENT_LOCK="$environment_lock"
 # `make check` creates CO-RE build outputs as root; the documented acceptance
 # tests run as ubuntu and rebuild the BPF skeleton, so hand those outputs over.
 chown -R ubuntu:ubuntu "$repo_dir/build"
