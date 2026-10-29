@@ -180,6 +180,19 @@ or a complete bundle. These are host-resource stops, not task outcomes. The
 interrupted overlays were preserved. With the current host load and guard
 policy, increasing guest RAM is not a viable way to recover inference utility.
 
+A final bounded attempt used a new diagnostic-only profile with the same pinned
+Ollama/model lock but `context_tokens=512` (the previous diagnostic used 1,024),
+while keeping prediction limit 128, request timeout 900 seconds, keep-alive 300
+seconds, and two agent turns. It used the 1,024 MiB guest, 3,072 MiB guest swap,
+the single `edit-01` task, and seed 11. The guest verified the cached model and
+entered `phase3-corpus`, but the live host guard stopped the run at the exact
+error `MemAvailable=2020 MiB; need at least 2048 MiB (2x guest RAM)`. There was
+no `TRIPWIRE_RESULT_META` marker, task row, or complete artifact bundle. This
+does not measure whether the lower context improves inference: the run ended
+before the task result could be observed. The profile is preserved as
+`config/model.tcg-lowcontext.json` with its paired pinned lock; do not combine
+any future diagnostic output from it with the research corpus.
+
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
 preserve their config/model locks and inspect the phase notes before use.

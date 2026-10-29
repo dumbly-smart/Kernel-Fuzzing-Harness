@@ -1,0 +1,20 @@
+{
+  "profile": "tcg-lowcontext-diagnostic-only",
+  "note": "One-task troubleshooting profile to reduce inference memory pressure under software TCG. Its 512-token context is not the research profile and must not be mixed with corpus results.",
+  "runtime": "ollama",
+  "runtime_version": "0.40.7",
+  "runtime_linux_amd64_asset": "ollama-linux-amd64.tar.zst",
+  "runtime_linux_amd64_sha256": "7f082e625b4c334df84ed1558fe282d6d8091fe3545790aef30b3a9c50d44d41",
+  "model": "qwen3:0.6b-q4_K_M",
+  "model_size_source": "https://ollama.com/library/qwen3%3A0.6b-q4_K_M",
+  "base_url": "http://127.0.0.1:11434",
+  "generation": {
+    "temperature": 0.0,
+    "context_tokens": 512,
+    "prediction_tokens": 128,
+    "timeout_seconds": 900,
+    "keep_alive_seconds": 300,
+    "max_turns": 2
+  },
+  "paid_apis_enabled": false
+}

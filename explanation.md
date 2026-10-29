@@ -118,6 +118,15 @@ that the current host cannot provide enough sustained memory to test whether
 extra guest RAM improves TCG inference. Preserve these interrupted overlays
 and treat the Phase 3 corpus as pending.
 
+One more diagnostic tried to reduce inference memory with a separate
+512-token-context profile, keeping the same model/runtime lock, 128-token
+prediction limit, 900-second request timeout, and two-turn agent limit. Its
+1 GiB guest verified the cache and reached the corpus stage, but the host guard
+stopped it at 2,020 MiB available against the 2,048 MiB requirement. No task
+row or result bundle was returned, so the changed context setting has no task
+success evidence. The separate config and lock are kept for reproducibility;
+its results must not be joined to the research corpus.
+
 `data/vm/` stores large images, logs, and ignored output bundles. Its files
 are not committed by default. The committed `config/` files and environment
 docs identify desired dependency/model versions; per-run manifests and locks

@@ -81,6 +81,13 @@ did boot after temporary headroom recovery, but the runtime guard stopped the
 Neither produced the result metadata marker or a complete bundle. More details
 are in `progress.md`.
 
+The separate `config/model.tcg-lowcontext.json` profile and paired lock retain
+the same model/runtime pin while lowering the context limit from 1,024 to 512
+tokens. Its 1 GiB guest verified the cached model and reached the corpus stage,
+but the host guard stopped it at 2,020/2,048 MiB available. It returned no task
+row or complete bundle; this does not show whether lower context improves
+inference. Keep that profile separate from research corpus settings.
+
 ## Accepted guest — 2026-10-22
 
 Phase 0 acceptance passed on a disposable QEMU/KVM guest:
