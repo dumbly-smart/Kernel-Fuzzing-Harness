@@ -95,9 +95,10 @@ kill "$sink_pid" 2>/dev/null || true
 wait "$sink_pid" 2>/dev/null || true
 sink_pid=
 
-PYTHONPATH="$repo_dir" python3 - "$run_dir/events.jsonl" <<'PY'
+EXPECTED_SINK_PORT="$sink_port" PYTHONPATH="$repo_dir" python3 - "$run_dir/events.jsonl" <<'PY'
 import collections
 import json
+import os
 import sys
 from tripwire.events import iter_events
 from tripwire.stats import validate_stats_cadence
@@ -113,6 +114,17 @@ if missing:
     raise SystemExit(f"missing expected syscalls: {sorted(missing)}")
 if not any(name in syscalls for name in ("rename", "renameat", "renameat2")):
     raise SystemExit("missing expected rename syscall")
+expected_port = int(os.environ["EXPECTED_SINK_PORT"])
+if not any(event.get("syscall") == "connect" and
+           event.get("family") == 2 and
+           event.get("address") == "127.0.0.1" and
+           event.get("port") == expected_port for event in events):
+    raise SystemExit("missing expected loopback connect address and port metadata")
+if not any(event.get("syscall") == "sendto" and
+           event.get("byte_count", 0) > 0 for event in events):
+    raise SystemExit("missing expected positive sendto byte count")
+if any("payload" in event or "data" in event or "body" in event for event in events):
+    raise SystemExit("unexpected socket payload field in metadata-only trace")
 if not any(event["type"] == "syscall" and event["syscall"] == "openat"
            and event["return_code"] == -2 for event in events):
     raise SystemExit("missing expected failed openat return code -2")
