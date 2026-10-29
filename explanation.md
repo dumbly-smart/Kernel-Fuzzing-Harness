@@ -81,8 +81,30 @@ change enough to satisfy the same policy. TCG Phase 0 acceptance passed on
 2026-10-29. A full Phase 3 TCG attempt exceeded 3,600 seconds without returning
 artifacts; a subsequent run streamed its first task row, which reported an
 Ollama request timeout after about 28 minutes. That guest was interrupted
-before the remaining tasks and returned no complete bundle. See `progress.md`
-for the exact attempt parameters and current phase status.
+before the remaining tasks and returned no complete bundle.
+
+The later bounded diagnostic used one synthetic edit task and seed 11, software
+TCG, 1,024 MiB guest RAM, 3,072 MiB guest swap, and a 1,800-second outer guest
+limit. It used a distinct diagnostic config and lock so its result cannot be
+confused with the research corpus profile: Ollama 0.40.7, Qwen3 0.6B Q4_K_M,
+1,024 context tokens, 128 predicted tokens, 900-second HTTP timeout, 300-second
+keep-alive, and two maximum agent turns. The NoCloud seed successfully copied
+the config and lock into the guest. Cached model verification and runtime
+startup succeeded, the guest reached the corpus stage, and the artifact
+integrity/export handoff completed. The one task nevertheless timed out and
+the manifest records 0/1 successes. A completed VM run therefore does not mean
+the model completed its task or that the phase acceptance criteria passed.
+
+The resulting event summary has 399 syscall events and zero tool calls. The
+joiner marks all events orphaned because there is no tool-call interval to
+attach them to. This 100% orphan rate is caused by the failed task's missing
+tool log and does not measure join performance on successful tool use. The
+empty sequence and absent task success similarly cannot characterize benign
+behavior. Separate attempts with 2,048 MiB and 1,536 MiB guest RAM did not
+start: the host available-memory guard measured 4,056 MiB against a 4,096 MiB
+minimum and 3,022 MiB against a 3,072 MiB minimum, respectively. The records
+for these failures are guard evidence only, not guest results. See
+`progress.md` for the exact command and remaining Phase 3 status.
 
 `data/vm/` stores large images, logs, and ignored output bundles. Its files
 are not committed by default. The committed `config/` files and environment

@@ -60,7 +60,22 @@ A later attempt streamed its first run summary, which reported the pinned
 Ollama request timeout after about 28 minutes of QEMU runtime. It was
 interrupted before the full suite and returned no corpus bundle. The runner
 now also streams model installation output and stage markers; that addition
-still needs a guest run. Details are in `progress.md`.
+was exercised in a guest by the bounded diagnostic described below. Details
+are in `progress.md`.
+
+The 2026-10-29 one-task follow-up used
+`config/model.tcg-diagnostic.json`, locked separately in
+`config/model.tcg-diagnostic.lock.json`: Ollama 0.40.7,
+`qwen3:0.6b-q4_K_M`, context 1,024, prediction limit 128, request timeout
+900 seconds, keep-alive 300 seconds, and at most two agent turns. The config
+and lock were seeded through NoCloud; the guest verified its cached model,
+entered the corpus stage, and returned a complete artifact bundle. Its only
+task still timed out and the manifest recorded 0/1 success. The bundle's 399
+events and zero tool calls make its all-orphan event count unsuitable for join
+evaluation. Treat this as VM handoff/export success and model utility failure,
+not a corpus measurement. Two higher-memory launches were blocked by the live
+guard at 4,056/4,096 MiB available for a 2,048 MiB guest and 3,022/3,072 MiB
+for a 1,536 MiB guest; neither booted or produced artifacts.
 
 ## Accepted guest — 2026-10-22
 

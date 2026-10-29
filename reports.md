@@ -108,7 +108,21 @@ request timeout. The guest was interrupted after this first timeout; the host
 reported `KeyboardInterrupt` in its QEMU polling loop, and no complete corpus
 bundle was returned. This is evidence of model/runtime utility failure for
 that attempt only, not a complete Phase 3 result. The latest model-install
-progress forwarding change has not yet been tested in a guest.
+progress forwarding change had not yet been tested at the time of that run.
+
+A later bounded diagnostic specifically tested that progress change, the
+NoCloud config/lock handoff, and the longer one-task model profile. With TCG,
+1,024 MiB guest RAM, 3,072 MiB guest swap, and an outer 1,800-second limit, the
+guest verified its cached Ollama 0.40.7 runtime and `qwen3:0.6b-q4_K_M`, entered
+the corpus phase, and returned the result bundle with exit 0. The configured
+900-second request for `edit-01-seed-11` still timed out; the manifest records
+0/1 successful tasks. This confirms the config handoff and result export path,
+but not useful model utility or Phase 3 acceptance. The failed task generated
+399 syscall events and no tool calls, so all 399 were orphaned; that rate must
+not be reported as corpus join quality. Higher-memory variants were stopped
+before boot by the host guard: 2,048 MiB guest RAM at 4,056 MiB available
+(4,096 MiB required), and 1,536 MiB guest RAM at 3,022 MiB available
+(3,072 MiB required). No result bundles were produced for those attempts.
 
 ## Reproduce or refresh reports
 

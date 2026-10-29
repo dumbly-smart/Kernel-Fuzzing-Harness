@@ -136,10 +136,37 @@ failure rather than spend the remaining time repeating the same timeout across
 the other tasks. The exact host-side interruption was `KeyboardInterrupt` in
 the runner's QEMU polling loop, and no complete artifact bundle was returned.
 The diagnostic row is visible in ignored `data/vm/serial.log` but is not a
-corpus artifact. Host memory stayed above the guard. A later code commit added
-serial stage markers and Ollama installer output; that additional visibility
-has not yet been exercised in a guest. A usable Phase 3 corpus still requires
-a VM/model combination whose inference completes within the pinned limits.
+corpus artifact. Host memory stayed above the guard. The subsequent bounded
+diagnostic below exercises the later serial stage markers and Ollama installer
+output. A usable Phase 3 corpus still requires a VM/model combination whose
+inference completes within the pinned limits.
+
+On 2026-10-29, a bounded one-task diagnostic was run from the cached-model
+overlay to check the revised model-config handoff and the 900-second timeout
+profile. The runner used `--reuse-provisioned-base`, software TCG, 1,024 MiB
+guest RAM, 3,072 MiB guest-only swap, a 1,800-second outer timeout, task
+`tasks/diagnostic/edit-01.yaml`, and seed 11. The NoCloud handoff successfully
+installed `config/model.tcg-diagnostic.json` and its lock in the guest; the
+guest verified the cached Ollama model and reported Ollama 0.40.7 ready with
+`qwen3:0.6b-q4_K_M`. The run entered `phase3-corpus` and returned a complete
+artifact bundle with guest acceptance exit 0. The single task still failed
+with `local Ollama chat request failed: timed out`, despite the diagnostic
+profile's 900-second HTTP request timeout: manifest success was 0/1. This is
+not a Phase 3 corpus result. The summary contains 399 syscall events, zero
+tool calls, and 399 orphan events; because the task failed before logging a
+tool call, this 100% orphan rate is not representative join-quality evidence.
+The task summary also reports a sequence length of zero. The diagnostic is
+useful as a successful config-seeding/artifact-handoff check and a failed
+inference-utility check only. It does not establish why inference took longer
+than the configured request timeout.
+
+Two higher-memory diagnostic launches were rejected by the live host headroom
+guard and returned no guest artifacts: 2,048 MiB guest RAM stopped at
+`MemAvailable=4056 MiB; need >=4096`, and 1,536 MiB guest RAM stopped at
+`MemAvailable=3022 MiB; need >=3072`. The next useful Phase 3 attempt needs a
+host/backend with sufficient headroom and model inference that completes under
+the pinned request limit; repeating this one-task TCG profile on the same
+conditions is unlikely to produce usable task traces.
 
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
