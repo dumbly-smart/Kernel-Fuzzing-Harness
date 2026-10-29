@@ -44,7 +44,10 @@ serial channel. It does not mount the host workspace into the guest or pass
 through host credentials. Run artifacts are stored under ignored `data/vm/`.
 The live host-memory check requires available memory of at least twice the
 configured guest RAM, both before boot and while the guest runs. This is a
-conservative local safety guard, not proof that a model fits.
+conservative local safety guard, not proof that a model fits. KVM with the
+host CPU model is the default acceleration mode. `--qemu-accel tcg` opts into
+software emulation for hosts whose KVM path is unavailable; it is much slower
+and is recorded in provenance because it can affect task utility and timing.
 
 `scripts/setup_vm.sh` checks the disposable Ubuntu environment, installs
 pinned system tools from the documented snapshot, records a lock, and prepares

@@ -61,6 +61,28 @@ while sleeping. This is an incomplete boot attempt, not a model/task failure
 or a corpus measurement. Its unique overlay and serial log remain under
 ignored `data/vm/` for diagnosis.
 
+Root-cause evidence points to the host KVM path. The launcher host reported
+Arch Linux kernel `7.2.11-arch1-1`, QEMU `11.1.2`, and an Intel i7-14650HX.
+The kernel journal recorded `kvm_intel: vmread failed` / `vmwrite failed`
+VMCS fields, while QEMU logged `KVM: entry failed, hardware error 0x0`.
+Separate KVM boot diagnostics reproduced the error with one vCPU and with
+`-cpu qemu64`, so neither two-vCPU SMP nor `-cpu host` alone explains it. A
+boot-only run using two-vCPU software TCG on the same base image reached the
+Ubuntu 24.04.5 login prompt in under two minutes. This supports a host KVM
+execution failure; it does not prove the full agent/BPF workload under TCG.
+
+The runner now has an explicit `--qemu-accel tcg` option. KVM remains the
+default; the selected acceleration and exact QEMU arguments are recorded in
+`data/vm/provenance.json`. TCG is substantially slower and may affect model
+task success and timing, so its measurements must remain identified as TCG
+runs rather than pooled silently with KVM data. No corpus run has yet been
+completed with this option.
+
+The QEMU runner unit tests pass (32 tests), and the full unit suite passes
+(163 tests) after adding acceleration selection. The TCG evidence so far is
+only the independent boot diagnostic, not the repository runner's full
+acceptance path.
+
 The `data/vm/` directory is ignored experiment state. Historical images,
 logs, and result JSONL there are not source-controlled evidence by themselves;
 preserve their config/model locks and inspect the phase notes before use.

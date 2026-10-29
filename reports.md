@@ -81,7 +81,12 @@ development launcher attempt was refused before boot because `MemAvailable`
 was 3,216 MiB while the 2 GiB VM policy requires 4,096 MiB; see
 `progress.md`. A subsequent 1 GiB tiny-profile guest stopped making serial and
 disk progress during early kernel boot and was interrupted after five minutes.
-It returned no corpus files. Neither attempt is an experiment result.
+The host journal recorded KVM VMCS read/write errors and QEMU logged
+`KVM: entry failed, hardware error 0x0`; this repeated with one vCPU and a
+generic `qemu64` CPU model. The same base image reached the Ubuntu login prompt
+under a two-vCPU TCG boot-only diagnostic. That establishes a host KVM-path
+failure for these attempts, not a guest-image failure. TCG has not been used
+for corpus measurement. Neither attempt is an experiment result.
 
 ## Reproduce or refresh reports
 

@@ -27,6 +27,10 @@ documented 0.6B fallback explicitly; record that model as a utility confound.
 Both this script and direct calls to `scripts/run_phase0_vm.py` require
 `MemAvailable` to be at least twice the selected guest RAM. This is a
 conservative launch heuristic, not a guarantee that a model will fit.
+QEMU uses KVM by default. On a host where KVM cannot enter the guest,
+`--qemu-accel tcg` selects software emulation; this can make model inference
+much slower and can change task success and timing, so keep the backend from
+the recorded provenance with any results.
 The script refuses to overwrite existing guest disks and preserves all
 artifacts under ignored `data/vm/`.
 
