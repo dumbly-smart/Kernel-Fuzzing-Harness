@@ -154,6 +154,13 @@ class ImageVerificationTests(unittest.TestCase):
         self.assertIn('expected_run_count = manifest["task_count"] * manifest["seed_count"]', script)
         self.assertNotIn('manifest["run_count"] != 90', script)
 
+    def test_vm_runner_streams_model_install_progress_and_stage_marker(self):
+        script = (Path(__file__).resolve().parents[1] /
+                  'scripts/run_phase0_vm.py').read_text()
+
+        self.assertIn('TRIPWIRE_STAGE=model-install', script)
+        self.assertIn('tee /dev/ttyS0 > /root/model-install.log', script)
+
     def test_guest_startup_cleanup_rejects_untrusted_run_directory_names(self):
         with self.assertRaisesRegex(ValueError, 'unexpected name'):
             vm.guest_startup_cleanup_commands(

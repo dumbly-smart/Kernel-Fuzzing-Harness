@@ -493,10 +493,16 @@ if [ "$status" -eq 0 ]; then
     status=$?
 fi
 if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
-    bash /opt/tripwire/scripts/install_local_model.sh --record-lock --model-config "PHASE3_MODEL_CONFIG" > /root/model-install.log 2>&1
-    status=$?
+    printf '%s\n' 'TRIPWIRE_STAGE=model-install' > /dev/ttyS0
+    bash /opt/tripwire/scripts/install_local_model.sh --record-lock --model-config "PHASE3_MODEL_CONFIG" 2>&1 | tee /dev/ttyS0 > /root/model-install.log
+    pipeline_status=("${PIPESTATUS[@]}")
+    status=${pipeline_status[0]}
+    if [ "${pipeline_status[1]}" -ne 0 ] && [ "$status" -eq 0 ]; then
+        status=${pipeline_status[1]}
+    fi
 fi
 if [ "$status" -eq 0 ] && [ "PHASE3" = "true" ]; then
+    printf '%s\n' 'TRIPWIRE_STAGE=phase3-corpus' > /dev/ttyS0
     MODEL_CONFIG=/opt/tripwire/PHASE3_MODEL_CONFIG RUN_DIR=/opt/tripwire/PHASE3_RUN_DIR bash /opt/tripwire/scripts/smoke_benign_corpus.sh > /root/phase3-corpus.log 2>&1
     status=$?
 fi
