@@ -167,3 +167,34 @@ each declared tool result from a distinct call. The recorded 90-run corpus
 predates these additions and still covers the earlier 30-task definition set;
 do not present its metrics as measurements of the new tasks. A fresh Phase 3
 run is required to measure their success and behavior.
+
+## Bounded TCG diagnostics (2026-10-29)
+
+The TCG fallback completed a one-task artifact-handoff diagnostic from the
+cached model overlay using `config/model.tcg-diagnostic.json` and its paired
+lock. The guest verified Ollama 0.40.7 and `qwen3:0.6b-q4_K_M`, reached the
+corpus runner, and returned a complete bundle. Task `edit-01`, seed 11, failed
+with `local Ollama chat request failed: timed out` under the profile's
+900-second request timeout (0/1 successful). Its 399 behavioral syscall events
+had no tool calls and were all orphaned; this reflects the failed task's
+missing call record and is not join-quality evidence.
+
+Further runs tested whether additional guest RAM or a smaller context could
+help, but were stopped by the host's live 2x-RAM guard before a task result was
+returned:
+
+- 2,048 MiB guest: booted, then stopped at
+  `MemAvailable=4019 MiB; need at least 4096 MiB`.
+- 1,536 MiB guest: reached the corpus stage, then stopped at
+  `MemAvailable=3019 MiB; need at least 3072 MiB`.
+- 1,024 MiB guest with `config/model.tcg-lowcontext.json` (512-token context,
+  same model/runtime pin): reached the corpus stage, then stopped at
+  `MemAvailable=2020 MiB; need at least 2048 MiB`.
+
+None of these three attempts returned the result metadata marker, task rows,
+or a complete artifact bundle. They add no utility, behavior, or detector
+measurements. The low-context profile is preserved for reproducibility, but
+its effect on model output remains unknown. The 1 GiB diagnostic profile and
+this profile are troubleshooting configurations, not substitutes for the
+research model or corpus. Phase 3 remains pending until a host can sustain the
+guest memory guard and return complete results.
