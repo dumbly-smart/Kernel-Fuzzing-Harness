@@ -148,22 +148,22 @@ hypotheses are not findings because none of the injected goals succeeded.
 
 ## 8. Related work
 
-AgentSight [1] describes eBPF-based correlation between agent intent and system
-effects, including inspection of LLM traffic; Tripwire's current detector
-focuses on OS-only behavior and measures what remains detectable without
-application payloads. Tetragon [3] documents eBPF observability and runtime
-enforcement for process, file, and network activity. AgentDojo provides a
-dynamic benchmark for tool-agent prompt injection [2]. Tripwire adapts one
-workspace email-exfiltration scenario to a fake canary and a loopback-only
-sink; its full simulated tool suite is not integrated because those tools do
-not directly produce the OS-visible behavior or tool-call records Tripwire
-measures. System-call
-sequence models have used short-range syscall correlations to characterize
-normal process behavior [5], and later
-work demonstrated mimicry attacks against host IDSs [6]. More recent work
-targets provenance-graph detectors [4]. Tripwire's attacker is currently a
-narrow local probe rather than a general optimizer; it does not reproduce
-those papers' attack methods or results.
+AgentSight [1] uses eBPF to inspect encrypted LLM traffic for semantic intent,
+observe kernel effects, and correlate the streams. Tripwire is complementary
+in scope: its current detector excludes application payloads and evaluates
+OS-behavior features alone. The successful-injection evidence needed to
+measure that detector's limits has not yet been obtained. Tetragon [3]
+documents eBPF observability and runtime enforcement for process, file, and
+network activity. AgentDojo provides a dynamic benchmark for tool-agent prompt
+injection [2]. Tripwire adapts one workspace email-exfiltration scenario to a
+fake canary and a loopback-only sink; its full simulated tool suite is not
+integrated because those tools do not directly produce the OS-visible behavior
+or tool-call records Tripwire measures. System-call sequence models have used
+short-range syscall correlations to characterize normal process behavior [5],
+and later work demonstrated mimicry attacks against host IDSs [6]. Recent work
+also studies mimicry against provenance-graph detectors [4]. Tripwire's
+attacker is currently a narrow local probe rather than a general optimizer; it
+does not reproduce those papers' attack methods or results.
 
 ## References
 
@@ -178,16 +178,18 @@ those papers' attack methods or results.
    and F. Tramèr, “AgentDojo: A Dynamic Environment to Evaluate Prompt
    Injection Attacks and Defenses for LLM Agents,” Advances in Neural
    Information Processing Systems 37, Datasets and Benchmarks Track, 2024.
+   doi: [10.52202/079017-2636](https://doi.org/10.52202/079017-2636).
    [Proceedings](https://proceedings.neurips.cc/paper_files/paper/2024/hash/97091a5177d8dc64b1da8bf3e1f6fb54-Abstract-Datasets_and_Benchmarks_Track.html),
    [arXiv:2406.13352](https://arxiv.org/abs/2406.13352).
 3. Cilium, “Tetragon: eBPF-based Security Observability and Runtime
-   Enforcement,” project documentation, accessed 2026-10-24; source pinned to
+   Enforcement,” project documentation, accessed 2026-10-30; source pinned to
    release v1.7.1.
    [Documentation](https://tetragon.io/docs/),
    [v1.7.1 source](https://github.com/cilium/tetragon/tree/v1.7.1).
 4. A. Goyal, X. Han, G. Wang, and A. Bates, “Sometimes, You Aren't What You
    Do: Mimicry Attacks against Provenance Graph Host Intrusion Detection
-   Systems,” NDSS 2023.
+   Systems,” NDSS 2023, doi:
+   [10.14722/ndss.2023.24207](https://doi.org/10.14722/ndss.2023.24207).
    [NDSS paper page](https://www.ndss-symposium.org/ndss-paper/sometimes-you-arent-what-you-do-mimicry-attacks-against-provenance-graph-host-intrusion-detection-systems/).
 5. S. Forrest, S. A. Hofmeyr, A. Somayaji, and T. A. Longstaff, “A Sense of
    Self for Unix Processes,” Proceedings of the 1996 IEEE Symposium on
