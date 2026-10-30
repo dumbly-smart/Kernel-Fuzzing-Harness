@@ -21,9 +21,10 @@
   becomes defined when Phase 5 attack labels are added.
 - Before feature extraction, the shared grouping step rejects duplicate run
   IDs, duplicate or malformed tool-call IDs, and calls whose run ID is absent
-  from the supplied `runs.jsonl`. This prevents mismatched or repeated JSONL
-  rows from being silently dropped or counted twice by detector and ablation
-  evaluation.
+  from the supplied `runs.jsonl`. Detector and ablation evaluators combine
+  benign and attack rows before grouping, so the checks also catch collisions
+  across those input directories. This prevents mismatched or repeated JSONL
+  rows from being silently dropped or counted twice.
 
 ## Research parameters and limits
 

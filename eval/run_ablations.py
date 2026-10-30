@@ -127,14 +127,16 @@ def run(corpus_dir: Path, output_dir: Path, detector_config_path: Path,
     ablation_config = json.loads(ablation_config_path.read_text(encoding="utf-8"))
     runs = read_jsonl(corpus_dir / "runs.jsonl")
     calls = read_jsonl(corpus_dir / "joined.jsonl")
-    samples = group_run_samples(runs, calls)
+    all_runs = list(runs)
+    all_calls = list(calls)
     if attack_dir is not None:
         attack_runs = read_jsonl(attack_dir / "runs.jsonl")
         attack_calls = read_jsonl(attack_dir / "joined.jsonl")
-        attacks = group_run_samples(attack_runs, attack_calls)
-        if any(not row["is_attack"] for row in attacks):
+        if any(run.get("is_attack") is not True for run in attack_runs):
             raise ValueError("every attack-dir run must be explicitly labeled is_attack=true")
-        samples.extend(attacks)
+        all_runs.extend(attack_runs)
+        all_calls.extend(attack_calls)
+    samples = group_run_samples(all_runs, all_calls)
     summary, false_positives, verdicts = evaluate_ablations(
         samples, detector_config, ablation_config)
     output_dir.mkdir(parents=True, exist_ok=True)

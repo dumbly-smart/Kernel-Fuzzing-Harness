@@ -147,15 +147,17 @@ def run(corpus_dir: Path, output_dir: Path, config_path: Path,
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     else:
         manifest = {}
-    samples = group_run_samples(runs, calls)
+    all_runs = list(runs)
+    all_calls = list(calls)
     attack_runs = []
     if attack_dir is not None:
         attack_runs = read_jsonl(attack_dir / "runs.jsonl")
         attack_calls = read_jsonl(attack_dir / "joined.jsonl")
-        attack_samples = group_run_samples(attack_runs, attack_calls)
-        if any(sample.get("is_attack") is not True for sample in attack_samples):
+        if any(run.get("is_attack") is not True for run in attack_runs):
             raise ValueError("every attack-dir run must be explicitly labeled is_attack=true")
-        samples.extend(attack_samples)
+        all_runs.extend(attack_runs)
+        all_calls.extend(attack_calls)
+    samples = group_run_samples(all_runs, all_calls)
     summary, scored, false_positives, attack_verdicts = evaluate(samples, config)
     summary["corpus"] = {
         "model": manifest.get("model"),
