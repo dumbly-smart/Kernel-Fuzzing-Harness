@@ -19,6 +19,11 @@
 - `make eval-detectors` writes scores, metrics, split membership, and a cause
   row for every false positive. TPR remains null for a benign-only corpus and
   becomes defined when Phase 5 attack labels are added.
+- Before feature extraction, the shared grouping step rejects duplicate run
+  IDs, duplicate or malformed tool-call IDs, and calls whose run ID is absent
+  from the supplied `runs.jsonl`. This prevents mismatched or repeated JSONL
+  rows from being silently dropped or counted twice by detector and ablation
+  evaluation.
 
 ## Research parameters and limits
 

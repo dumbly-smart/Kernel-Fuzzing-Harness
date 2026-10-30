@@ -59,6 +59,37 @@ class DetectorFeatureTests(unittest.TestCase):
                          ["task-a-seed-11", "task-b-seed-11"])
         self.assertEqual(samples[1]["features"]["sequences"], [])
 
+    def test_group_run_samples_rejects_duplicate_run_ids(self):
+        runs = [
+            {"run_id": "task-a-seed-11", "task_type": "search"},
+            {"run_id": "task-a-seed-11", "task_type": "edit"},
+        ]
+
+        with self.assertRaisesRegex(ValueError, "duplicate run_id"):
+            group_run_samples(runs, [])
+
+    def test_group_run_samples_rejects_malformed_call_ids(self):
+        runs = [{"run_id": "task-a-seed-11", "task_type": "search"}]
+
+        for call_id in ("not-a-call-id", "task-a-seed-11:", ":0001", "task-a-seed-11:²"):
+            with self.subTest(call_id=call_id), self.assertRaisesRegex(
+                    ValueError, "malformed call_id"):
+                group_run_samples(runs, [{"call_id": call_id, "events": []}])
+
+    def test_group_run_samples_rejects_calls_without_a_matching_run(self):
+        runs = [{"run_id": "task-a-seed-11", "task_type": "search"}]
+
+        with self.assertRaisesRegex(ValueError, "no matching run"):
+            group_run_samples(
+                runs, [{"call_id": "stale-run-seed-11:0001", "events": []}])
+
+    def test_group_run_samples_rejects_duplicate_call_ids(self):
+        runs = [{"run_id": "task-a-seed-11", "task_type": "search"}]
+        call = {"call_id": "task-a-seed-11:0001", "tool": "shell", "events": []}
+
+        with self.assertRaisesRegex(ValueError, "duplicate call_id"):
+            group_run_samples(runs, [call, dict(call)])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -96,15 +96,34 @@ def group_run_samples(run_records: list[dict[str, Any]],
                       joined_calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return one sample per attempted run, including runs with no calls/events."""
     by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for call in joined_calls:
-        call_id = call.get("call_id")
-        if isinstance(call_id, str) and ":" in call_id:
-            by_run[call_id.rsplit(":", 1)[0]].append(call)
-    samples = []
+    run_ids: set[str] = set()
+    validated_runs: list[tuple[dict[str, Any], str, str]] = []
     for run in run_records:
         run_id, task_type = run.get("run_id"), run.get("task_type")
-        if not isinstance(run_id, str) or not isinstance(task_type, str):
-            raise ValueError("every run record needs string run_id and task_type")
+        if not isinstance(run_id, str) or not run_id or not isinstance(task_type, str):
+            raise ValueError("every run record needs non-empty string run_id and string task_type")
+        if run_id in run_ids:
+            raise ValueError(f"duplicate run_id in run records: {run_id}")
+        run_ids.add(run_id)
+        validated_runs.append((run, run_id, task_type))
+
+    call_ids = set()
+    for call in joined_calls:
+        call_id = call.get("call_id")
+        if not isinstance(call_id, str) or ":" not in call_id:
+            raise ValueError(f"malformed call_id in joined calls: {call_id!r}")
+        run_id, counter = call_id.rsplit(":", 1)
+        if not run_id or not counter.isascii() or not counter.isdigit():
+            raise ValueError(f"malformed call_id in joined calls: {call_id!r}")
+        if call_id in call_ids:
+            raise ValueError(f"duplicate call_id in joined calls: {call_id}")
+        call_ids.add(call_id)
+        if run_id not in run_ids:
+            raise ValueError(f"joined call {call_id} has no matching run")
+        by_run[run_id].append(call)
+
+    samples = []
+    for run, run_id, task_type in validated_runs:
         calls = by_run.get(run_id, [])
         samples.append({
             "run_id": run_id,
