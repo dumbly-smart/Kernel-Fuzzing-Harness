@@ -9,7 +9,7 @@ acceptance criterion is met.
 | Phase | Implementation | Evidence / acceptance status |
 |---|---|---|
 | 0 — scaffold and environment | VM setup, environment checks, pinned lock and reproduction entry point exist. | Accepted disposable QEMU guest on 2026-10-22. Host checks are not a substitute; this Arch development host is intentionally rejected by Ubuntu-only checks. |
-| 1 — eBPF tracer | CO-RE tracepoint programs, cgroup filter, ring buffer, loader, JSON events and loss stats exist. | Guest tracer smoke accepted 2026-10-24. See `docs/notes/phase1-guest-acceptance.txt`. |
+| 1 — eBPF tracer | CO-RE tracepoint programs, cgroup filter, ring buffer, loader, JSON events and loss stats exist. | Baseline guest tracer smoke accepted 2026-10-24. The smoke now also checks a positive TCP `write` on the connected socket FD; that strengthened assertion still needs a guest rerun. See `docs/notes/phase1-guest-acceptance.txt` and `docs/notes/phase1.md`. |
 | 2 — correlation | Tool-call JSONL, process ancestry join, 250 ms late-event grace, and orphan/ambiguous reporting exist. | Ten-task guest smoke accepted. Historical Phase 3 joins still had 85.71% behavioral orphan rate. |
 | 3 — benign corpus | 34 task definitions now exist; three seeds and multiple pinned local model profiles are supported. | Only an older 30-task / 90-run corpus is measured. Tiny 0.6B profile succeeded on 15/90 tasks; four added tasks are unmeasured. Fresh corpus needed. |
 | 4 — detectors | Per-task-type allowlist, tool/syscall n-grams, held-out task split, FPR thresholds and FP-cause output exist. | Historical small-corpus metrics are generated; low utility and small calibration sets limit interpretation. |
