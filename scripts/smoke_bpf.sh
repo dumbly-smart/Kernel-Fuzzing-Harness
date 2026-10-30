@@ -33,8 +33,29 @@ trap cleanup EXIT
 
 mkdir "$cgroup_path"
 mkdir -p "$run_dir/work"
-python3 -c 'import socket,sys; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1); s.bind(("127.0.0.1",0)); s.listen(1); print(s.getsockname()[1],flush=True); c,_=s.accept(); c.recv(256); c.sendall(b"tripwire-local-sink-ok"); c.close(); s.close()' \
-    >"$run_dir/sink-port" 2>"$run_dir/sink.log" &
+python3 - "$run_dir/sink-port" >"$run_dir/sink.log" 2>&1 <<'PY' &
+import socket
+import sys
+
+expected = b"fake-canary-metadata-onlytripwire-write-metadata-only"
+with socket.socket() as listener:
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    with open(sys.argv[1], "w", encoding="ascii") as port_file:
+        port_file.write(str(listener.getsockname()[1]))
+    connection, _ = listener.accept()
+    with connection:
+        received = bytearray()
+        while len(received) < len(expected):
+            chunk = connection.recv(len(expected) - len(received))
+            if not chunk:
+                raise RuntimeError("client closed before sending both markers")
+            received.extend(chunk)
+        if bytes(received) != expected:
+            raise RuntimeError("received unexpected synthetic marker bytes")
+        connection.sendall(b"tripwire-local-sink-ok")
+PY
 sink_pid=$!
 for _ in $(seq 1 100); do
     [[ -s "$run_dir/sink-port" ]] && break
@@ -77,8 +98,10 @@ bash -c '
     mv relative.txt renamed.txt
     python3 - "$SINK_PORT" <<"PY"
 import socket, sys
+import os
 connection = socket.create_connection(("127.0.0.1", int(sys.argv[1])))
 connection.sendall(b"fake-canary-metadata-only")
+os.write(connection.fileno(), b"tripwire-write-metadata-only")
 assert connection.recv(128) == b"tripwire-local-sink-ok"
 connection.close()
 PY
@@ -115,11 +138,22 @@ if missing:
 if not any(name in syscalls for name in ("rename", "renameat", "renameat2")):
     raise SystemExit("missing expected rename syscall")
 expected_port = int(os.environ["EXPECTED_SINK_PORT"])
-if not any(event.get("syscall") == "connect" and
-           event.get("family") == 2 and
-           event.get("address") == "127.0.0.1" and
-           event.get("port") == expected_port for event in events):
+connections = [event for event in events
+               if event.get("syscall") == "connect" and
+               event.get("return_code") == 0 and
+               event.get("family") == 2 and
+               event.get("address") == "127.0.0.1" and
+               event.get("port") == expected_port]
+if not connections:
     raise SystemExit("missing expected loopback connect address and port metadata")
+connection = min(connections, key=lambda event: event["monotonic_ns"])
+if not any(event.get("syscall") == "write" and
+           event.get("fd") == connection.get("fd") and
+           event.get("return_code", 0) > 0 and
+           event.get("byte_count", 0) > 0 and
+           event["monotonic_ns"] >= connection["monotonic_ns"]
+           for event in events):
+    raise SystemExit("missing positive TCP socket write metadata on connected fd")
 if not any(event.get("syscall") == "sendto" and
            event.get("byte_count", 0) > 0 for event in events):
     raise SystemExit("missing expected positive sendto byte count")

@@ -70,12 +70,24 @@ final reported drop count was 0 with a 16 MiB ring, 256-byte paths and a 1 s
 poll interval. All test network traffic used a temporary listener on guest
 loopback. The trace contains only synthetic file contents and no payload.
 
+The smoke script was subsequently tightened to require a successful IPv4
+`connect` to its local listener and a positive `write` return on the same file
+descriptor after that connection. The fixture sends the second marker using
+`os.write()` so the kernel `write` syscall is exercised explicitly; the
+listener drains both synthetic markers before replying. This checks that a
+stream write carries the descriptor and byte-count metadata needed to associate
+it with the earlier destination event. The existing acceptance counts and
+sample trace predate this stronger assertion; rerun the root-only smoke in the
+disposable guest before treating that added check as accepted.
+
 ## Known limits
 
 - Only Ubuntu 24.04 amd64 / kernel `6.8.0-146-generic` was exercised. Ubuntu
   22.04 and other kernels/architectures remain unverified.
 - `write` events are metadata for all file descriptors; they are not yet
-  classified as socket writes, and payload bytes are never inspected.
+  classified as socket writes, and payload bytes are never inspected. The
+  smoke correlates its known socket descriptor with `connect`; the general
+  purpose tracer still leaves that interpretation to userspace.
 - `sendto` and `connect` provide destination metadata when the syscall supplies
   a readable IPv4/IPv6 sockaddr. This does not observe every possible network
   path or identify application-layer intent.
