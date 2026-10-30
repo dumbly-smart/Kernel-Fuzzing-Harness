@@ -17,6 +17,14 @@
   primary sources are linked, including foundational syscall-sequence and
   mimicry work. One AgentDojo scenario is adapted; full benchmark integration
   and successful injection measurements remain follow-up work.
+- On 2026-10-30, the related-work claims and identifiers were checked against
+  the AgentSight arXiv preprint, NeurIPS proceedings for AgentDojo, official
+  Tetragon documentation, the NDSS paper record for provenance-graph mimicry,
+  and IEEE Xplore for syscall-sequence modeling. DOI links were added for
+  AgentDojo and the NDSS paper. AgentSight's ACM page returned HTTP 403 during
+  this check; its venue, pages, and DOI were cross-checked against its arXiv
+  record and bibliographic index. The draft now states that Tripwire has not
+  yet obtained successful-injection evidence for its OS-only detector claim.
 
 ## Measured implementation status
 
