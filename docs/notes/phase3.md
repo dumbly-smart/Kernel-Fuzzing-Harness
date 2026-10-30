@@ -7,6 +7,10 @@
 - Runs use the Ollama local chat API on `127.0.0.1`; the runtime archive and
   downloaded model manifest are recorded separately from the base BPF guest
   lock. Seed, temperature, context size, output cap, and turn cap are explicit.
+- Before reusing a cached model, the installer compares the manifest bytes to
+  the lock and streams every content-addressed layer blob through SHA256 in
+  1 MiB chunks. This detects replaced or corrupted non-empty blobs while using
+  bounded memory; cache verification reads the full model layer data from disk.
 - The local HTTP fixtures are served only on guest loopback from a process kept
   outside the agent cgroup. This leaves the agent's connect and receive events
   attributable to the agent without counting the fixture server's own syscalls.

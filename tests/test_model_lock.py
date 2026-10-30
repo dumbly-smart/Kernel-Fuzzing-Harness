@@ -27,7 +27,8 @@ LOCK = {
 
 class ModelLockTests(unittest.TestCase):
     def test_cached_model_requires_matching_manifest_and_all_blobs(self):
-        layer = "sha256:" + "d" * 64
+        model_blob = b"model"
+        layer = "sha256:" + hashlib.sha256(model_blob).hexdigest()
         manifest = {"layers": [{"digest": layer}]}
         manifest_bytes = json.dumps(manifest, separators=(",", ":")).encode()
         lock = dict(
@@ -41,12 +42,33 @@ class ModelLockTests(unittest.TestCase):
             manifest_path.write_bytes(manifest_bytes)
             blobs = root / "blobs"
             blobs.mkdir()
-            (blobs / ("sha256-" + layer.removeprefix("sha256:"))).write_bytes(b"model")
+            (blobs / ("sha256-" + layer.removeprefix("sha256:"))).write_bytes(model_blob)
 
             self.assertTrue(cached_model_is_complete(manifest_path, root, lock))
 
             (blobs / ("sha256-" + layer.removeprefix("sha256:"))).unlink()
             self.assertFalse(cached_model_is_complete(manifest_path, root, lock))
+
+    def test_cached_model_rejects_blob_bytes_that_do_not_match_layer_digest(self):
+        expected_blob = b"expected model layer"
+        layer = "sha256:" + hashlib.sha256(expected_blob).hexdigest()
+        manifest_bytes = json.dumps(
+            {"layers": [{"digest": layer}]}, separators=(",", ":")
+        ).encode()
+        lock = dict(
+            LOCK,
+            manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+            manifest_layers=[layer],
+        )
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "manifest.json").write_bytes(manifest_bytes)
+            blobs = root / "blobs"
+            blobs.mkdir()
+            (blobs / ("sha256-" + layer.removeprefix("sha256:"))).write_bytes(
+                b"different but non-empty content")
+
+            self.assertFalse(cached_model_is_complete(root / "manifest.json", root, lock))
 
     def test_cached_model_rejects_manifest_digest_drift(self):
         manifest_bytes = b'{"layers":[]}'

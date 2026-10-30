@@ -68,6 +68,15 @@ def cached_model_is_complete(manifest_path: Path, models_directory: Path,
         if not isinstance(digest, str) or not _LAYER_DIGEST.fullmatch(digest):
             return False
         blob = models_directory / "blobs" / f"sha256-{digest.removeprefix('sha256:')}"
-        if blob.is_symlink() or not blob.is_file() or blob.stat().st_size == 0:
+        try:
+            if blob.is_symlink() or not blob.is_file() or blob.stat().st_size == 0:
+                return False
+            blob_hash = hashlib.sha256()
+            with blob.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    blob_hash.update(chunk)
+        except OSError:
+            return False
+        if blob_hash.hexdigest() != digest.removeprefix("sha256:"):
             return False
     return bool(digests)
