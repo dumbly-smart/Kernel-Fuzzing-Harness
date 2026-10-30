@@ -12,6 +12,11 @@
   attributable to the agent without counting the fixture server's own syscalls.
 - Failed model calls remain in `runs.jsonl` with the exact error. They count as
   utility failures and are not silently retried against another model or API.
+- Corpus discovery requires a valid Phase 3 manifest and checks that its
+  task/seed/run/success counts match the JSONL rows, every task has one row per
+  declared seed, and joined calls refer to known unique run IDs. An empty
+  `joined.jsonl` is valid when all runs made zero tool calls; a partial or
+  malformed run file is skipped instead of selected as the newest corpus.
 
 ## First guest attempt
 
